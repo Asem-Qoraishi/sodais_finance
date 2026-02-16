@@ -1,0 +1,19 @@
+{
+    "appName": "مدیریت فروشگاه",
+    "version": "نسخه",
+    "dashboard": "داشبورد",
+    "persons": "اشخاص",
+    "inventory": "انبار",
+    "finance": "امور مالی",
+    "reports": "گزارشات",
+    "totalBalance": "موجودی کل",
+    "balance": "موجودی",
+    "amount": "مقدار",
+    "filter": "فیلتر",
+    "day": "روز",
+    "week": "هفته",
+    "month": "ماه",
+    "year": "سال",
+    "customTime":  "انتخاب زمان",
+    "all": "همه"
+}

@@ -1,0 +1,19 @@
+{
+    "appName": "",
+    "version": "نسخې",
+    "dashboard": "داشبورد",
+    "persons": "اشخاص",
+    "inventory": "انبار",
+    "finance": "مالیه",
+    "reports": "Reports",
+    "totalBalance": "ټولی موجودی",
+    "balance": "موجودی",
+    "amount": "مقدار",
+    "filter": "فیلټر",
+    "day": "ورځ",
+    "week": "اونۍ",
+    "month": "میاشت",
+    "year": "کال",
+    "customTime":  "د وخت انتخاب",
+    "all": "همه"
+}

@@ -1,0 +1,20 @@
+{
+    "appName": "د پلورنځي مدیریت",
+    "version": "Version",
+    "dashboard": "Dashboard",
+    "persons": "Persons",
+    "inventory": "Inventory",
+    "finance": "Finance",
+    "reports": "Reports",
+    "totalBalance": "Total Balance",
+    "balance": "Balance",
+    "amount": "Amount",
+    "filter": "Filter",
+    "day": "Day",
+    "week": "Week",
+    "month": "Month",
+    "year": "Year",
+    "customTime": "Custom Time",
+    "all": "All"
+
+}
