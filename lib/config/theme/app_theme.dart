@@ -11,85 +11,142 @@ import 'package:sodais_finance/core/utils/helpers/app_locale_helper.dart';
 class AppTheme {
   AppTheme._();
 
-  static ThemeData lightTheme(BuildContext context) => ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      surface: Colors.transparent,
+  static ThemeData lightTheme(BuildContext context) {
+    final colorScheme = _lightColorScheme();
+
+    return ThemeData(
+      colorScheme: colorScheme,
+      useMaterial3: true,
+      scaffoldBackgroundColor: kBackgroundColor,
+      canvasColor: kBackgroundColor,
+      primaryColor: colorScheme.primary,
+      dividerColor: kStrokeColor,
+      hintColor: textLabelColor,
+      highlightColor: kHighlightColor,
+      dividerTheme: DividerThemeData(color: kStrokeColor, space: 0),
+      inputDecorationTheme: TextFieldTheme.lightTheme,
+      outlinedButtonTheme: OutlinedBtnTheme.lightTheme,
+      elevatedButtonTheme: ElevatedBtnTheme.lightTheme,
+      filledButtonTheme: FilledBtnTheme.lightTheme,
+      iconTheme: IconThemeData(color: textLabelColor),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colorScheme.primaryContainer,
+        foregroundColor: colorScheme.onPrimaryContainer,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: kCardColor,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: textLabelColor,
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: kCardColor,
+        selectedIconTheme: IconThemeData(color: colorScheme.onPrimaryContainer),
+        selectedLabelTextStyle: TextStyle(color: colorScheme.primary),
+        unselectedIconTheme: const IconThemeData(color: textLabelColor),
+        unselectedLabelTextStyle: const TextStyle(color: textLabelColor),
+        indicatorColor: colorScheme.primaryContainer,
+      ),
+      cardTheme: const CardThemeData().copyWith(
+        surfaceTintColor: Colors.transparent,
+        color: kCardColor,
+        elevation: 1,
+      ),
+      fontFamily: appLocaleHelper.getFontFamily(context),
+      textTheme: CustomTextTheme.lightTheme,
+      appBarTheme: CustomAppBarTheme.lightTheme,
+    );
+  }
+
+  static ThemeData darkTheme(BuildContext context) {
+    final colorScheme = _darkColorScheme();
+
+    return ThemeData(
+      colorScheme: colorScheme,
+      useMaterial3: true,
+      scaffoldBackgroundColor: darkBackgroundColor,
+      canvasColor: darkBackgroundColor,
+      primaryColor: colorScheme.primary,
+      dividerColor: darkStrokeColor,
+      hintColor: textLabelColorDark,
+      highlightColor: darkHighlightColor,
+      dividerTheme: DividerThemeData(color: darkStrokeColor, space: 0),
+      inputDecorationTheme: TextFieldTheme.darkTheme,
+      outlinedButtonTheme: OutlinedBtnTheme.darkTheme,
+      elevatedButtonTheme: ElevatedBtnTheme.darkTheme,
+      filledButtonTheme: FilledBtnTheme.darkTheme,
+      iconTheme: IconThemeData(color: textLabelColorDark),
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
+        backgroundColor: colorScheme.primaryContainer,
+        foregroundColor: colorScheme.onPrimaryContainer,
+      ),
+      bottomNavigationBarTheme: BottomNavigationBarThemeData(
+        backgroundColor: darkNavigationColor,
+        selectedItemColor: colorScheme.primary,
+        unselectedItemColor: textLabelColorDark,
+      ),
+      navigationRailTheme: NavigationRailThemeData(
+        backgroundColor: darkNavigationColor,
+        selectedIconTheme: IconThemeData(color: colorScheme.onPrimaryContainer),
+        selectedLabelTextStyle: TextStyle(color: colorScheme.primary),
+        unselectedIconTheme: const IconThemeData(color: textLabelColorDark),
+        unselectedLabelTextStyle: const TextStyle(color: textLabelColorDark),
+        indicatorColor: colorScheme.primaryContainer,
+      ),
+      cardTheme: const CardThemeData().copyWith(
+        surfaceTintColor: Colors.transparent,
+        color: darkCardColor,
+      ),
+      textTheme: CustomTextTheme.darkTheme,
+      fontFamily: appLocaleHelper.getFontFamily(context),
+      appBarTheme: CustomAppBarTheme.darkTheme,
+    );
+  }
+
+  static ColorScheme _lightColorScheme() {
+    return ColorScheme.fromSeed(
       seedColor: kPrimaryColor,
       brightness: Brightness.light,
-    ),
-    useMaterial3: true,
-    scaffoldBackgroundColor: kBackgroundColor,
-    primaryColor: kPrimaryColor,
-    dividerColor: kStrokeColor,
-    hintColor: textLabelColor,
-    highlightColor: kHighlightColor,
-    dividerTheme: DividerThemeData(color: kStrokeColor, space: 0),
-    inputDecorationTheme: TextFieldTheme.lightTheme,
-    outlinedButtonTheme: OutlinedBtnTheme.lightTheme,
-    elevatedButtonTheme: ElevatedBtnTheme.lightTheme,
-    filledButtonTheme: FilledBtnTheme.lightTheme,
-    iconTheme: IconThemeData(color: textLabelColor),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: kPrimaryColor,
-      foregroundColor: kBackgroundColor,
-    ),
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: kCardColor,
-      selectedItemColor: kPrimaryColor,
-    ),
-    navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: kCardColor,
-      selectedIconTheme: const IconThemeData(color: kBackgroundColor),
-      indicatorColor: kPrimaryColor,
-    ),
-    cardTheme: const CardThemeData().copyWith(
-      surfaceTintColor: kCardColor,
-      color: kCardColor,
-      elevation: 1,
-    ),
-    fontFamily: appLocaleHelper.getFontFamily(context),
-    textTheme: CustomTextTheme.lightTheme,
-    appBarTheme: CustomAppBarTheme.lightTheme,
-  );
+    ).copyWith(
+      primary: kPrimaryColor,
+      onPrimary: Colors.white,
+      primaryContainer: kPrimaryContainerColor,
+      onPrimaryContainer: kOnPrimaryContainerColor,
+      secondary: kSecondaryColor,
+      onSecondary: Colors.white,
+      surface: kCardColor,
+      onSurface: textPrimaryColor,
+      outline: kStrokeColor,
+      error: kErrorColor,
+      onError: Colors.white,
+      surfaceContainerLowest: Colors.white,
+      surfaceContainerLow: const Color(0xFFF8FAFC),
+      surfaceContainer: kCardColor,
+      surfaceContainerHigh: kHighlightColor,
+      surfaceContainerHighest: kHighlightColor,
+    );
+  }
 
-  static ThemeData darkTheme(BuildContext context) => ThemeData(
-    colorScheme: ColorScheme.fromSeed(
-      surface: Colors.transparent,
-      seedColor: kPrimaryColor,
+  static ColorScheme _darkColorScheme() {
+    return ColorScheme.fromSeed(
+      seedColor: darkPrimaryColor,
       brightness: Brightness.dark,
-    ),
-    useMaterial3: true,
-    scaffoldBackgroundColor: darkBackgroundColor,
-    primaryColor: kPrimaryColor,
-    dividerColor: darkStrokeColor,
-    hintColor: textLabelColorDark,
-    highlightColor: darkHighlightColor,
-    dividerTheme: DividerThemeData(color: darkStrokeColor, space: 0),
-    inputDecorationTheme: TextFieldTheme.darkTheme,
-    outlinedButtonTheme: OutlinedBtnTheme.darkTheme,
-    elevatedButtonTheme: ElevatedBtnTheme.darkTheme,
-    filledButtonTheme: FilledBtnTheme.darkTheme,
-    iconTheme: IconThemeData(color: textLabelColorDark),
-    floatingActionButtonTheme: FloatingActionButtonThemeData(
-      backgroundColor: darkPrimaryColor,
-      foregroundColor: darkBackgroundColor,
-    ),
-    bottomNavigationBarTheme: BottomNavigationBarThemeData(
-      backgroundColor: darkCardColor,
-      selectedItemColor: darkPrimaryColor,
-    ),
-    navigationRailTheme: NavigationRailThemeData(
-      backgroundColor: darkCardColor,
-      selectedIconTheme: const IconThemeData(color: darkBackgroundColor),
-      indicatorColor: darkPrimaryColor,
-    ),
-    cardTheme: const CardThemeData().copyWith(
-      surfaceTintColor: darkCardColor,
-      color: darkCardColor,
-    ),
-    textTheme: CustomTextTheme.darkTheme,
-    fontFamily: appLocaleHelper.getFontFamily(context),
-    appBarTheme: CustomAppBarTheme.darkTheme,
-  );
-  //generate dark theme
+    ).copyWith(
+      primary: darkPrimaryColor,
+      onPrimary: Colors.white,
+      primaryContainer: darkPrimaryContainerColor,
+      onPrimaryContainer: darkOnPrimaryContainerColor,
+      secondary: darkSecondaryColor,
+      onSecondary: darkOnBackground,
+      surface: darkCardColor,
+      onSurface: textPrimaryColorDark,
+      outline: darkStrokeColor,
+      error: darkErrorColor,
+      onError: Colors.white,
+      surfaceContainerLowest: darkBackgroundColor,
+      surfaceContainerLow: darkCardLowColor,
+      surfaceContainer: darkCardColor,
+      surfaceContainerHigh: darkHighlightColor,
+      surfaceContainerHighest: darkStrokeColor,
+    );
+  }
 }

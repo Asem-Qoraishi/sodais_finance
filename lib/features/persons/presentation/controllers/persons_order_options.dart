@@ -3,7 +3,7 @@ import 'package:sodais_finance/core/enums/order_by_interface.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
 
 enum PersonsOrderOption implements OrderByInterface {
-  lastActive,
+  recentlyActive,
   lastPyament,
   lastReceipt,
   alphabetAsc,
@@ -16,8 +16,8 @@ enum PersonsOrderOption implements OrderByInterface {
   @override
   String get name {
     switch (this) {
-      case PersonsOrderOption.lastActive:
-        return LocaleKeys.lastActive.tr();
+      case PersonsOrderOption.recentlyActive:
+        return LocaleKeys.recentlyActive.tr();
       case PersonsOrderOption.lastPyament:
         return LocaleKeys.lastPayment.tr();
       case PersonsOrderOption.lastReceipt:
@@ -39,7 +39,7 @@ enum PersonsOrderOption implements OrderByInterface {
 
   @override
   String get icon => switch (this) {
-    PersonsOrderOption.lastActive => 'last_active',
+    PersonsOrderOption.recentlyActive => 'last_active',
     PersonsOrderOption.lastPyament => 'last_payment',
     PersonsOrderOption.lastReceipt => 'last_receipt',
     PersonsOrderOption.alphabetAsc => 'alphabet_asc',

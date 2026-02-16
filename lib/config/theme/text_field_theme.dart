@@ -7,8 +7,8 @@ class TextFieldTheme {
 
   static final lightTheme = InputDecorationTheme(
     errorMaxLines: 2,
-    prefixIconColor: Colors.grey,
-    suffixIconColor: Colors.grey,
+    prefixIconColor: textLabelColor,
+    suffixIconColor: textLabelColor,
     labelStyle: TextStyle(
       fontSize: sizeConstants.fontSmall,
       color: textLabelColor,
@@ -26,7 +26,7 @@ class TextFieldTheme {
     ),
     floatingLabelStyle: TextStyle(
       fontSize: sizeConstants.fontSmall,
-      color: textLabelColor,
+      color: kPrimaryColor,
     ),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
@@ -52,8 +52,8 @@ class TextFieldTheme {
 
   static final darkTheme = InputDecorationTheme(
     errorMaxLines: 2,
-    prefixIconColor: Colors.white,
-    suffixIconColor: Colors.white,
+    prefixIconColor: textLabelColorDark,
+    suffixIconColor: textLabelColorDark,
     fillColor: darkCardColor,
     filled: true,
     labelStyle: TextStyle(
@@ -71,7 +71,7 @@ class TextFieldTheme {
     ),
     floatingLabelStyle: TextStyle(
       fontSize: sizeConstants.fontSmall,
-      color: textLabelColorDark,
+      color: darkPrimaryColor,
     ),
     border: OutlineInputBorder(
       borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),

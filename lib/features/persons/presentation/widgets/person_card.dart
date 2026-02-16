@@ -1,117 +1,221 @@
 import 'dart:io';
 
+import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_screenutil/flutter_screenutil.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
-import 'package:sodais_finance/core/utils/formatters/date_formatter.dart';
+import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/relative_time_formatter.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 
 class PersonCard extends StatelessWidget {
-  const PersonCard({super.key, required this.person});
+  const PersonCard({super.key, required this.person, this.onTap});
 
   final Person person;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    final avatarImage = _resolveAvatarImage(person.image);
-    final subtitleParts = <String>[
-      if ((person.phone?.trim().isNotEmpty ?? false)) person.phone!.trim(),
-      if ((person.email?.trim().isNotEmpty ?? false)) person.email!.trim(),
-    ];
+    final theme = Theme.of(context);
 
-    return ListTile(
-      onTap: () {},
-      dense: true,
-      minVerticalPadding: sizeConstants.spacingSmall,
-      leading: CircleAvatar(
-        backgroundImage: avatarImage,
-        child: avatarImage != null
-            ? null
-            : Text(person.name.isEmpty ? '?' : person.name[0].toUpperCase()),
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(sizeConstants.radiusLarge),
+        child: Ink(
+          padding: EdgeInsets.all(sizeConstants.spacingSmall),
+          decoration: BoxDecoration(
+            color: theme.cardColor,
+            borderRadius: BorderRadius.circular(sizeConstants.radiusLarge),
+            border: Border.all(
+              color: theme.dividerColor.withValues(alpha: 0.45),
+            ),
+          ),
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              CircleAvatar(
+                child: person.image != null
+                    ? Image.file(File(person.image!))
+                    : Text(person.name.substring(0, 3).toUpperCase()),
+              ),
+              SizedBox(width: sizeConstants.spacingSmall),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(
+                          child: Text(
+                            person.name,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: theme.textTheme.bodyLarge?.copyWith(
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ),
+                        SizedBox(width: sizeConstants.spacingXSmall),
+                        Text(
+                          relativeTimeFormatter.formatPersonLastActive(
+                            context: context,
+                            date: person.updatedAt,
+                          ),
+                          style: theme.textTheme.labelSmall,
+                        ),
+                      ],
+                    ),
+                    SizedBox(height: sizeConstants.spacingXSmall),
+                    Row(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Expanded(child: _buildTypeBadges(context)),
+                        SizedBox(width: sizeConstants.spacingXSmall),
+                        _buildBalanceBadge(context),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
-      title: Row(
-        children: [
-          Expanded(child: Text(person.name, overflow: TextOverflow.ellipsis)),
-          sizeConstants.spacingMedium.horizontalSpace,
-          _buildTypeChip(context),
-        ],
-      ),
-      subtitle: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          if (subtitleParts.isNotEmpty)
+    );
+  }
+
+  Widget _buildTypeBadges(BuildContext context) {
+    final labels = switch (person.type) {
+      PersonType.customer => [LocaleKeys.customer.tr()],
+      PersonType.supplier => [LocaleKeys.supplier.tr()],
+      PersonType.both => [LocaleKeys.customer.tr(), LocaleKeys.supplier.tr()],
+    };
+
+    return Wrap(
+      spacing: sizeConstants.spacingXXSmall,
+      runSpacing: sizeConstants.spacingXXSmall,
+      children: labels.map((label) {
+        final isSupplier = label == LocaleKeys.supplier.tr();
+        final color = isSupplier
+            ? Colors.purple.shade700
+            : Colors.blue.shade700;
+
+        return Container(
+          padding: EdgeInsets.symmetric(
+            horizontal: sizeConstants.spacingXSmall,
+            vertical: sizeConstants.spacingXXSmall - 1,
+          ),
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(sizeConstants.radiusXSmall),
+            border: Border.all(color: color.withValues(alpha: 0.22)),
+          ),
+          child: Text(
+            label,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: color,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        );
+      }).toList(),
+    );
+  }
+
+  Widget _buildBalanceBadge(BuildContext context) {
+    final theme = Theme.of(context);
+
+    if (person.balanceStatus == BalanceStatus.settled) {
+      return Container(
+        padding: EdgeInsets.symmetric(
+          horizontal: sizeConstants.spacingXSmall,
+          vertical: sizeConstants.spacingXXSmall,
+        ),
+        decoration: BoxDecoration(
+          color: theme.hintColor.withValues(alpha: 0.16),
+          borderRadius: BorderRadius.circular(sizeConstants.radiusSmall),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              Icons.check_rounded,
+              size: sizeConstants.iconSmall,
+              color: theme.hintColor,
+            ),
+            SizedBox(width: sizeConstants.spacingXXSmall),
             Text(
-              subtitleParts.join(' • '),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
+              LocaleKeys.settled.tr(),
+              style: theme.textTheme.labelMedium?.copyWith(
+                color: theme.hintColor,
+                fontWeight: FontWeight.w600,
+              ),
             ),
-          Text(
-            dateFormatter.formatDateToWeekDayAndMonthDayDate(
-              context: context,
-              date: person.updatedAt.toString(),
-            ),
-          ),
-          if ((person.address?.trim().isNotEmpty ?? false))
-            Text(
-              person.address!.trim(),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-        ],
+          ],
+        ),
+      );
+    }
+
+    final hasCredit = person.balance > 0;
+    final accentColor = hasCredit ? Colors.blue.shade700 : Colors.red.shade700;
+    final badgeIcon = hasCredit
+        ? Icons.arrow_downward_rounded
+        : Icons.arrow_upward_rounded;
+
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: sizeConstants.spacingXSmall,
+        vertical: sizeConstants.spacingXXSmall,
       ),
-      trailing: Column(
-        crossAxisAlignment: CrossAxisAlignment.end,
+      decoration: BoxDecoration(
+        color: accentColor.withValues(alpha: 0.14),
+        borderRadius: BorderRadius.circular(sizeConstants.radiusSmall),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          Icon(badgeIcon, color: accentColor, size: sizeConstants.iconSmall),
+          SizedBox(width: sizeConstants.spacingXXSmall),
           Text(
-            person.balance.toStringAsFixed(2),
-            style: Theme.of(
-              context,
-            ).textTheme.bodyLarge!.copyWith(color: person.balanceStatus.color),
+            _formatMoney(person.balance.abs()),
+            style: theme.textTheme.labelMedium?.copyWith(
+              color: accentColor,
+              fontWeight: FontWeight.w800,
+            ),
           ),
-          Text(
-            person.balanceStatus.name,
-            style: Theme.of(context).textTheme.labelMedium,
-          ),
-          Text('#${person.id}', style: Theme.of(context).textTheme.labelSmall),
         ],
       ),
     );
+  }
+
+  String _formatMoney(double value) {
+    final fixed = value.abs().toStringAsFixed(2);
+    final parts = fixed.split('.');
+    return '\$${_withThousandsSeparator(parts[0])}.${parts[1]}';
+  }
+
+  String _withThousandsSeparator(String value) {
+    final buffer = StringBuffer();
+
+    for (int i = 0; i < value.length; i++) {
+      final remaining = value.length - i;
+      buffer.write(value[i]);
+      if (remaining > 1 && remaining % 3 == 1) {
+        buffer.write(',');
+      }
+    }
+
+    return buffer.toString();
   }
 
   ImageProvider<Object>? _resolveAvatarImage(String? rawImage) {
     final image = rawImage?.trim() ?? '';
     if (image.isEmpty) return null;
 
-    final normalized = image.toLowerCase();
-    if (normalized.startsWith('http://') || normalized.startsWith('https://')) {
-      return NetworkImage(image);
-    }
-
     final file = File(image);
     if (!file.existsSync()) return null;
     return FileImage(file);
-  }
-
-  Widget _buildTypeChip(BuildContext context) {
-    final color = switch (person.type) {
-      PersonType.customer => const Color(0xFF0EA5E9),
-      PersonType.supplier => const Color(0xFFF97316),
-      PersonType.both => const Color(0xFF6366F1),
-    };
-
-    return Container(
-      padding: EdgeInsets.symmetric(horizontal: sizeConstants.spacingXXSmall),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.18),
-        borderRadius: BorderRadius.circular(sizeConstants.radiusXSmall),
-      ),
-      child: Text(
-        person.type.label,
-        style: Theme.of(context).textTheme.labelSmall?.copyWith(
-          color: color,
-          fontWeight: FontWeight.w600,
-        ),
-      ),
-    );
   }
 }
