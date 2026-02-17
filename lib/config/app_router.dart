@@ -4,8 +4,10 @@ import 'package:sodais_finance/features/app/presentation/main_wrapper.dart';
 import 'package:sodais_finance/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/add_new_person_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/persons_screen.dart';
+import 'package:sodais_finance/features/products/domain/product.dart';
 import 'package:sodais_finance/features/products/presentation/add_new_product_screen.dart';
 import 'package:sodais_finance/features/products/presentation/inventory_screen.dart';
+import 'package:sodais_finance/features/products/presentation/product_categories_screen.dart';
 import 'package:sodais_finance/features/reports/presentation/reports_screen.dart';
 
 part 'route_names.dart';
@@ -45,8 +47,36 @@ class AppRouter {
             MainWrapper(navigationShell: navigationShell),
         branches: _buildShellBranches(),
       ),
-
-      // Build nested routes
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.persons}/${routeNames.addNewPerson}',
+        name: routeNames.addNewPerson,
+        builder: (context, state) => const AddNewPersonScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.inventory}/${routeNames.addNewProduct}',
+        name: routeNames.addNewProduct,
+        builder: (context, state) => const AddNewProductScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.inventory}/${routeNames.editProduct}',
+        name: routeNames.editProduct,
+        builder: (context, state) {
+          final product = state.extra is Product
+              ? state.extra as Product
+              : null;
+          return AddNewProductScreen(editingProduct: product);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path:
+            '/${routeNames.inventory}/${routeNames.addNewProduct}/${routeNames.manageProductCategories}',
+        name: routeNames.manageProductCategories,
+        builder: (context, state) => const ProductCategoriesScreen(),
+      ),
     ],
   );
 
@@ -69,13 +99,6 @@ class AppRouter {
             path: "/${routeNames.persons}",
             name: routeNames.persons,
             builder: (context, state) => const PersonsScreen(),
-            routes: [
-              GoRoute(
-                path: "/${routeNames.addNewPerson}",
-                name: routeNames.addNewPerson,
-                builder: (context, state) => const AddNewPersonScreen(),
-              ),
-            ],
           ),
         ],
       ),
@@ -88,9 +111,9 @@ class AppRouter {
             builder: (context, state) => const InventoryScreen(),
             routes: [
               GoRoute(
-                path: "/${routeNames.addNewProduct}",
-                name: routeNames.addNewProduct,
-                builder: (context, state) => const AddNewProductScreen(),
+                path: routeNames.productCategories,
+                name: routeNames.productCategories,
+                builder: (context, state) => const ProductCategoriesScreen(),
               ),
             ],
           ),

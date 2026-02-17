@@ -21,31 +21,39 @@ class DashboardReportCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final theme = Theme.of(context);
+
     return CustomCard(
       child: ConstrainedBox(
-        constraints: BoxConstraints(minHeight: 70),
+        constraints: const BoxConstraints(minHeight: 70),
         child: Row(
-          spacing: sizeConstants.spacingMedium,
           children: [
             CustomSvgIcon(iconSource: svgAssetName, iconColor: iconColor),
-            Column(
-              children: [
-                Text(
-                  title,
-                  style: Theme.of(context).textTheme.titleSmall!.copyWith(
-                    color: Theme.of(context).hintColor,
+            SizedBox(width: sizeConstants.spacingSmall),
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    title,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall!.copyWith(
+                      color: theme.hintColor,
+                    ),
                   ),
-                ),
-                Text(
-                  amount.toString(),
-                  style: Theme.of(context).textTheme.titleLarge!.copyWith(
-                    color:
-                        textColor ??
-                        Theme.of(context).textTheme.titleLarge!.color,
-                    fontWeight: FontWeight.bold,
+                  Text(
+                    amount.toString(),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleLarge!.copyWith(
+                      color: textColor ?? theme.textTheme.titleLarge!.color,
+                      fontWeight: FontWeight.bold,
+                    ),
                   ),
-                ),
-              ],
+                ],
+              ),
             ),
           ],
         ),

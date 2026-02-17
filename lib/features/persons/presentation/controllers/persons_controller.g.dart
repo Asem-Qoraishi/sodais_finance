@@ -41,7 +41,7 @@ final class PersonSearchQueryProvider
   }
 }
 
-String _$personSearchQueryHash() => r'83eba4f7cfb4ac68fc244e485fee691d214d62e7';
+String _$personSearchQueryHash() => r'7b52048ba464fca6acd0b1a550c9a22d501ff7aa';
 
 abstract class _$PersonSearchQuery extends $Notifier<String> {
   String build();
@@ -93,7 +93,7 @@ final class PersonsTypeFilterProvider
   }
 }
 
-String _$personsTypeFilterHash() => r'6e9f932544639c15950fea50a5a4fb970432646f';
+String _$personsTypeFilterHash() => r'96d19c18e3b350275a8aaedf87a6784d8ad8ccd9';
 
 abstract class _$PersonsTypeFilter extends $Notifier<PersonTypeFilter> {
   PersonTypeFilter build();
@@ -137,7 +137,7 @@ final class PersonsControllerProvider
   PersonsController create() => PersonsController();
 }
 
-String _$personsControllerHash() => r'03fcd64a9d7cccadc1c98f25b7df1e188b1134bd';
+String _$personsControllerHash() => r'9dc93edf47adc07a1f36106c3492ca1aff4c091f';
 
 abstract class _$PersonsController extends $StreamNotifier<List<Person>> {
   Stream<List<Person>> build();

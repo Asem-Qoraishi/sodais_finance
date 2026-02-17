@@ -2,7 +2,7 @@
 
 // ignore_for_file: constant_identifier_names
 
-abstract class LocaleKeys {
+abstract class  LocaleKeys {
   static const appName = 'appName';
   static const version = 'version';
   static const dashboard = 'dashboard';
@@ -61,9 +61,54 @@ abstract class LocaleKeys {
   static const search = 'search';
   static const clearSearch = 'clearSearch';
   static const addNewProduct = 'addNewProduct';
+  static const editProduct = 'editProduct';
   static const addNewPerson = 'addNewPerson';
+  static const saveProduct = 'saveProduct';
+  static const updateProduct = 'updateProduct';
+  static const fieldRequired = 'fieldRequired';
+  static const fieldOptional = 'fieldOptional';
+  static const categories = 'categories';
+  static const manageCategories = 'manageCategories';
+  static const searchCategories = 'searchCategories';
+  static const noCategoriesFound = 'noCategoriesFound';
+  static const failedToLoadCategories = 'failedToLoadCategories';
+  static const newCategory = 'newCategory';
+  static const categoryName = 'categoryName';
+  static const categoryNameHint = 'categoryNameHint';
+  static const selectIcon = 'selectIcon';
+  static const categoryColor = 'categoryColor';
+  static const createCategory = 'createCategory';
+  static const itemsCount = 'itemsCount';
+  static const resultsCount = 'resultsCount';
   static const initalStockQuantity = 'initalStockQuantity';
+  static const initalStockHint = 'initalStockHint';
   static const productName = 'productName';
+  static const productNameHint = 'productNameHint';
+  static const productImage = 'productImage';
+  static const tapToUploadOrCapturePhoto = 'tapToUploadOrCapturePhoto';
+  static const selectFile = 'selectFile';
+  static const generalInformation = 'generalInformation';
+  static const skuOrBarcode = 'skuOrBarcode';
+  static const skuOrBarcodeHint = 'skuOrBarcodeHint';
+  static const category = 'category';
+  static const selectCategory = 'selectCategory';
+  static const description = 'description';
+  static const descriptionHint = 'descriptionHint';
+  static const pricingAndTax = 'pricingAndTax';
+  static const purchasePrice = 'purchasePrice';
+  static const sellingPrice = 'sellingPrice';
+  static const taxRate = 'taxRate';
+  static const taxRatePercent = 'taxRatePercent';
+  static const taxRateHint = 'taxRateHint';
+  static const inventorySettings = 'inventorySettings';
+  static const reorderLevel = 'reorderLevel';
+  static const lowStockThreshold = 'lowStockThreshold';
+  static const warehouseLocation = 'warehouseLocation';
+  static const warehouseLocationHint = 'warehouseLocationHint';
+  static const electronics = 'electronics';
+  static const officeSupplies = 'officeSupplies';
+  static const homeAndLiving = 'homeAndLiving';
+  static const accessories = 'accessories';
   static const product = 'product';
   static const person = 'person';
   static const name = 'name';
@@ -88,6 +133,8 @@ abstract class LocaleKeys {
   static const invalidNumber = 'invalidNumber';
   static const noPersonsFound = 'noPersonsFound';
   static const failedToLoadPersons = 'failedToLoadPersons';
+  static const noProductsFound = 'noProductsFound';
+  static const failedToLoadProducts = 'failedToLoadProducts';
   static const justNow = 'justNow';
   static const minutesAgo = 'minutesAgo';
   static const hoursAgo = 'hoursAgo';
@@ -98,8 +145,11 @@ abstract class LocaleKeys {
   static const yearsAgo = 'yearsAgo';
   static const price = 'price';
   static const stock = 'stock';
+  static const lowStock = 'lowStock';
+  static const outOfStock = 'outOfStock';
   static const image = 'image';
   static const add = 'add';
   static const cancel = 'cancel';
   static const save = 'save';
+
 }
