@@ -126,7 +126,7 @@ extension on PersonsOrderOption {
     switch (this) {
       case PersonsOrderOption.recentlyActive:
         return PersonsOrderBy.recentlyActive;
-      case PersonsOrderOption.lastPyament:
+      case PersonsOrderOption.lastPayment:
         return PersonsOrderBy.lastPayment;
       case PersonsOrderOption.lastReceipt:
         return PersonsOrderBy.lastReceipt;
