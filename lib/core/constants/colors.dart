@@ -57,3 +57,4 @@ const textLabelColorDark = Color(0xFF94A3B8); // Light gray for labels/hints
 const textSuccessColorDark = Color(0xFF4ADE80); // Light green
 const textErrorColorDark = Color(0xFFF87171); // Light red
 const textWarningColorDark = Color(0xFFFBBF24); // Light amber
+

@@ -17,6 +17,7 @@ class DashboardScreen extends StatelessWidget {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(title: Text(LocaleKeys.dashboard.tr()), centerTitle: true),
+      floatingActionButton: const DashboardActionButtons(),
       body: Padding(
         padding: EdgeInsets.symmetric(horizontal: sizeConstants.spacingMedium),
         child: CustomScrollView(
@@ -27,9 +28,6 @@ class DashboardScreen extends StatelessWidget {
             // #Reports
             DashboardReports(),
             SliverSizedBox(height: sizeConstants.spacingSmall),
-            // #Action Buttons
-            DashboardActionButtons(),
-            SliverSizedBox(height: sizeConstants.spacingMedium),
             // #Recent Activities
             RecentActivitiesLabel(),
             SliverSizedBox(height: sizeConstants.spacingSmall),

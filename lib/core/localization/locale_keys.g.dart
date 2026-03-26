@@ -2,7 +2,7 @@
 
 // ignore_for_file: constant_identifier_names
 
-abstract class  LocaleKeys {
+abstract class LocaleKeys {
   static const appName = 'appName';
   static const version = 'version';
   static const dashboard = 'dashboard';
@@ -38,6 +38,16 @@ abstract class  LocaleKeys {
   static const addNewPurchase = 'addNewPurchase';
   static const addNewPayment = 'addNewPayment';
   static const addNewReceipt = 'addNewReceipt';
+  static const newSale = 'newSale';
+  static const newPurchase = 'newPurchase';
+  static const receive = 'receive';
+  static const newExpense = 'newExpense';
+  static const trade = 'trade';
+  static const cashFlow = 'cashFlow';
+  static const management = 'management';
+  static const internalTransfer = 'internalTransfer';
+  static const recordBusinessCosts = 'recordBusinessCosts';
+  static const moveFundsBetweenAccounts = 'moveFundsBetweenAccounts';
   static const credit = 'credit';
   static const debt = 'debt';
   static const settled = 'settled';
@@ -151,5 +161,4 @@ abstract class  LocaleKeys {
   static const add = 'add';
   static const cancel = 'cancel';
   static const save = 'save';
-
 }
