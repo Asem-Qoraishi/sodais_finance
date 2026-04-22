@@ -41,7 +41,7 @@ final class AddNewProductFormProvider
   }
 }
 
-String _$addNewProductFormHash() => r'099757ed39efa1b15f88fa3c8d9b7a6ce146b5e6';
+String _$addNewProductFormHash() => r'7e56640baac1a9340bc9d2a661da6d0cb54fbd63';
 
 abstract class _$AddNewProductForm extends $Notifier<AddNewProductFormState> {
   AddNewProductFormState build();

@@ -1,30 +1,21 @@
-// This is a basic Flutter widget test.
-//
-// To perform an interaction with a widget in your test, use the WidgetTester
-// utility in the flutter_test package. For example, you can send tap and scroll
-// gestures. You can also use WidgetTester to find child widgets in the widget
-// tree, read text, and verify that the values of widget properties are correct.
-
-import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 
-import 'package:sodais_finance/main.dart';
+import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 
 void main() {
-  testWidgets('Counter increments smoke test', (WidgetTester tester) async {
-    // Build our app and trigger a frame.
-    await tester.pumpWidget(const MyApp());
+  test('InvoiceState computes totals and formatting', () {
+    final invoiceState = InvoiceState(
+      date: DateTime(2026, 4, 22),
+      items: const [InvoiceItem(id: '1', name: 'Product A', qty: 2, price: 50)],
+      paymentStatus: PaymentStatus.partialPaid,
+      amountPaid: 30,
+      discount: 10,
+    );
 
-    // Verify that our counter starts at 0.
-    expect(find.text('0'), findsOneWidget);
-    expect(find.text('1'), findsNothing);
-
-    // Tap the '+' icon and trigger a frame.
-    await tester.tap(find.byIcon(Icons.add));
-    await tester.pump();
-
-    // Verify that our counter has incremented.
-    expect(find.text('0'), findsNothing);
-    expect(find.text('1'), findsOneWidget);
+    expect(invoiceState.subtotal, 100);
+    expect(invoiceState.totalAmount, 90);
+    expect(invoiceState.remainingAmount, 60);
+    expect(formatInvoiceAmount(invoiceState.totalAmount), '90');
+    expect(formatInvoiceAmount(90.5), '90.50');
   });
 }

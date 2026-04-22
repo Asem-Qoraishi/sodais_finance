@@ -26,7 +26,7 @@ class CustomCard extends StatelessWidget {
       ),
       margin: margin,
       child: Padding(
-        padding: padding ?? EdgeInsets.all(sizeConstants.spacingLarge),
+        padding: padding ?? EdgeInsets.all(sizeConstants.spacingMedium),
         child: child,
       ),
     );

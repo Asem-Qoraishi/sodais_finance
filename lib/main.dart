@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
+import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:sodais_finance/config/app_router.dart';
 import 'package:sodais_finance/config/theme/app_theme.dart';
 import 'package:sodais_finance/core/enums/app_locale_enum.dart';
@@ -12,16 +13,17 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await EasyLocalization.ensureInitialized();
   await ScreenUtil.ensureScreenSize();
+
   runApp(
     ProviderScope(
       child: EasyLocalization(
         supportedLocales: AppLocaleEnum.values
-            .map((language) => Locale(language.languageCode))
+            .map((language) => language.locale)
             .toList(),
         path: 'assets/translations',
         assetLoader: CodegenLoader(),
-        startLocale: Locale(AppLocaleEnum.fa.languageCode),
-        fallbackLocale: Locale(AppLocaleEnum.fa.languageCode),
+        startLocale: AppLocaleEnum.fa.locale,
+        fallbackLocale: AppLocaleEnum.fa.locale,
         useOnlyLangCode: true,
         child: const MyApp(),
       ),
@@ -50,7 +52,15 @@ class MyApp extends StatelessWidget {
         themeMode: ThemeMode.dark,
         locale: context.locale,
         supportedLocales: context.supportedLocales,
-        localizationsDelegates: context.localizationDelegates,
+        localizationsDelegates: [
+          // PersianCupertinoLocalizations.delegate,
+          // PersianMaterialLocalizations.delegate,
+          DariMaterialLocalizations.delegate,
+          DariCupertinoLocalizations.delegate,
+          // PashtoMaterialLocalizations.delegate,
+          // PashtoCupertinoLocalizations.delegate,
+          ...context.localizationDelegates,
+        ],
         routerConfig: AppRouter().goRouter,
       ),
     );

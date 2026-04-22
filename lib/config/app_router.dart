@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sodais_finance/features/app/presentation/main_wrapper.dart';
 import 'package:sodais_finance/features/dashboard/presentation/dashboard_screen.dart';
+import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
+import 'package:sodais_finance/features/invoices/presentation/screens/invoice_create_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/add_new_person_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/persons_screen.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
@@ -76,6 +78,20 @@ class AppRouter {
             '/${routeNames.inventory}/${routeNames.addNewProduct}/${routeNames.manageProductCategories}',
         name: routeNames.manageProductCategories,
         builder: (context, state) => const ProductCategoriesScreen(),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.addNewSale}',
+        name: routeNames.addNewSale,
+        builder: (context, state) =>
+            const InvoiceCreateScreen(type: InvoiceType.sale),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.addNewPurchase}',
+        name: routeNames.addNewPurchase,
+        builder: (context, state) =>
+            const InvoiceCreateScreen(type: InvoiceType.purchase),
       ),
     ],
   );

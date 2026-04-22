@@ -26,7 +26,13 @@ class CustomTextField extends StatelessWidget {
     this.minLines,
     this.enabled = true,
     this.readOnly = false,
-  });
+    this.initialValue,
+    this.isDense,
+    this.contentPadding,
+  }) : assert(
+         controller == null || initialValue == null,
+         'Cannot provide both a controller and an initialValue.',
+       );
 
   final String? prefixIconSource;
   final IconData? prefixIconData;
@@ -43,6 +49,9 @@ class CustomTextField extends StatelessWidget {
   final List<TextInputFormatter>? inputFormatters;
   final TextInputType? keyboardType;
   final TextInputAction? textInputAction;
+  final String? initialValue;
+  final bool? isDense;
+  final EdgeInsetsGeometry? contentPadding;
   final bool obscureText;
   final int? maxLines;
   final int? minLines;
@@ -79,11 +88,14 @@ class CustomTextField extends StatelessWidget {
       onFieldSubmitted: onSubmitted,
       onChanged: onChange,
       onTap: onTap,
+      initialValue: initialValue,
       decoration: InputDecoration(
         prefixIcon: _buildPrefixIcon(),
         suffixIcon: suffixIcon,
         labelText: label,
         hintText: hintText,
+        isDense: isDense,
+        contentPadding: contentPadding,
       ),
     );
   }

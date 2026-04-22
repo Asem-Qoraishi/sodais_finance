@@ -5,24 +5,56 @@ import 'package:drift/native.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
+
 import 'package:sodais_finance/features/persons/data/local/dao/person_dao.dart';
 import 'package:sodais_finance/features/persons/data/local/tables/person_table.dart';
 import 'package:sodais_finance/features/products/data/local/dao/product_category_dao.dart';
 import 'package:sodais_finance/features/products/data/local/dao/product_dao.dart';
 import 'package:sodais_finance/features/products/data/local/tables/product_category_table.dart';
 import 'package:sodais_finance/features/products/data/local/tables/product_table.dart';
+import 'package:sodais_finance/features/invoices/data/local/tables/invoice_tables.dart';
+import 'package:sodais_finance/features/invoices/data/local/dao/invoice_dao.dart';
+import 'package:sodais_finance/features/finance/data/local/tables/finance_tables.dart';
+import 'package:sodais_finance/features/finance/data/local/tables/loan_check_tables.dart';
 
 part 'app_database.g.dart';
 
 @DriftDatabase(
-  tables: [PersonTable, ProductCategoryTable, ProductTable],
-  daos: [PersonDao, ProductCategoryDao, ProductDao],
+  tables: [
+    PersonTable,
+    ProductCategoryTable,
+    ProductTable,
+    InvoiceTable,
+    InvoiceItemTable,
+    BankAccountTable,
+    TransactionTable,
+    CheckTable,
+    LoanTable,
+    InstallmentTable,
+  ],
+  daos: [PersonDao, ProductCategoryDao, ProductDao, InvoiceDao],
 )
 class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 2;
+  int get schemaVersion => 3;
+
+  @override
+  MigrationStrategy get migration => MigrationStrategy(
+    onCreate: (migrator) async => migrator.createAll(),
+    onUpgrade: (migrator, from, to) async {
+      if (from < 3) {
+        await migrator.createTable(invoiceTable);
+        await migrator.createTable(invoiceItemTable);
+        await migrator.createTable(bankAccountTable);
+        await migrator.createTable(transactionTable);
+        await migrator.createTable(checkTable);
+        await migrator.createTable(loanTable);
+        await migrator.createTable(installmentTable);
+      }
+    },
+  );
 }
 
 LazyDatabase _openConnection() {

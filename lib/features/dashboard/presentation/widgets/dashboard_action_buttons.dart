@@ -41,7 +41,8 @@ extension DashboardQuickActionTypeX on DashboardQuickActionType {
       DashboardQuickActionType.newPurchase => DashboardQuickActionGroup.trade,
       DashboardQuickActionType.receive => DashboardQuickActionGroup.cashFlow,
       DashboardQuickActionType.payment => DashboardQuickActionGroup.cashFlow,
-      DashboardQuickActionType.newExpense => DashboardQuickActionGroup.management,
+      DashboardQuickActionType.newExpense =>
+        DashboardQuickActionGroup.management,
     };
   }
 
@@ -67,7 +68,8 @@ extension DashboardQuickActionTypeX on DashboardQuickActionType {
 
   String? subtitle(BuildContext context) {
     return switch (this) {
-      DashboardQuickActionType.newExpense => LocaleKeys.recordBusinessCosts.tr(),
+      DashboardQuickActionType.newExpense =>
+        LocaleKeys.recordBusinessCosts.tr(),
       _ => null,
     };
   }
@@ -102,11 +104,11 @@ class DashboardActionButtons extends StatelessWidget {
   const DashboardActionButtons({
     super.key,
     this.actions = kDefaultDashboardQuickActions,
-    this.onActionSelected,
+    required this.onActionSelected,
   });
 
   final List<DashboardQuickActionType> actions;
-  final ValueChanged<DashboardQuickActionType>? onActionSelected;
+  final ValueChanged<DashboardQuickActionType> onActionSelected;
 
   Future<void> _openQuickActions(BuildContext context) async {
     final selectedAction = await showModalBottomSheet<DashboardQuickActionType>(
@@ -117,7 +119,7 @@ class DashboardActionButtons extends StatelessWidget {
       builder: (_) => _DashboardQuickActionsSheet(actions: actions),
     );
 
-    if (selectedAction != null) onActionSelected?.call(selectedAction);
+    if (selectedAction != null) onActionSelected(selectedAction);
   }
 
   @override
@@ -153,15 +155,11 @@ class _DashboardQuickActionsSheet extends StatelessWidget {
       top: false,
       child: Container(
         decoration: BoxDecoration(
-          color: Theme.of(context).dialogBackgroundColor,
+          color: theme.dialogTheme.backgroundColor ?? theme.colorScheme.surface,
           borderRadius: BorderRadius.vertical(
             top: Radius.circular(sizeConstants.radiusXLarge * 1.35),
           ),
-          border: Border(
-            top: BorderSide(
-              color: Colors.grey.shade300,
-            ),
-          ),
+          border: Border(top: BorderSide(color: theme.dividerColor)),
         ),
         child: ConstrainedBox(
           constraints: BoxConstraints(
@@ -182,7 +180,7 @@ class _DashboardQuickActionsSheet extends StatelessWidget {
                     width: sizeConstants.spacingXLarge * 1.3,
                     height: sizeConstants.spacingXXSmall * 1.5,
                     decoration: BoxDecoration(
-                      color: Colors.grey.shade400,
+                      color: theme.dividerColor.withValues(alpha: 0.9),
                       borderRadius: BorderRadius.circular(
                         sizeConstants.radiusMax,
                       ),
@@ -275,17 +273,20 @@ class _GridActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return InkWell(
       onTap: () => Navigator.of(context).pop(action),
       borderRadius: BorderRadius.circular(sizeConstants.radiusLarge),
       child: Ink(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(sizeConstants.radiusLarge),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: theme.dividerColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: Colors.black.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.22 : 0.08,
+              ),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -300,11 +301,13 @@ class _GridActionCard extends StatelessWidget {
                 width: sizeConstants.avatarXSmall,
                 height: sizeConstants.avatarXSmall,
                 decoration: BoxDecoration(
-                  color: action.buttonColor.withOpacity(0.15),
+                  color: action.buttonColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(
                     sizeConstants.radiusMedium,
                   ),
-                  border: Border.all(color: action.buttonColor.withOpacity(0.3)),
+                  border: Border.all(
+                    color: action.buttonColor.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Icon(
                   action.iconData,
@@ -335,17 +338,20 @@ class _ListActionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
+
     return InkWell(
       onTap: () => Navigator.of(context).pop(action),
       borderRadius: BorderRadius.circular(sizeConstants.radiusLarge),
       child: Ink(
         decoration: BoxDecoration(
-          color: Colors.white,
+          color: theme.cardColor,
           borderRadius: BorderRadius.circular(sizeConstants.radiusLarge),
-          border: Border.all(color: Colors.grey.shade300),
+          border: Border.all(color: theme.dividerColor),
           boxShadow: [
             BoxShadow(
-              color: Colors.black12,
+              color: Colors.black.withValues(
+                alpha: theme.brightness == Brightness.dark ? 0.22 : 0.08,
+              ),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -359,11 +365,13 @@ class _ListActionCard extends StatelessWidget {
                 width: sizeConstants.avatarXSmall,
                 height: sizeConstants.avatarXSmall,
                 decoration: BoxDecoration(
-                  color: action.buttonColor.withOpacity(0.15),
+                  color: action.buttonColor.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(
                     sizeConstants.radiusMedium,
                   ),
-                  border: Border.all(color: action.buttonColor.withOpacity(0.3)),
+                  border: Border.all(
+                    color: action.buttonColor.withValues(alpha: 0.3),
+                  ),
                 ),
                 child: Icon(
                   action.iconData,
@@ -409,5 +417,3 @@ class _ListActionCard extends StatelessWidget {
     );
   }
 }
-
-

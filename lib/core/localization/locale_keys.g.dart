@@ -2,7 +2,7 @@
 
 // ignore_for_file: constant_identifier_names
 
-abstract class LocaleKeys {
+abstract class  LocaleKeys {
   static const appName = 'appName';
   static const version = 'version';
   static const dashboard = 'dashboard';
@@ -25,6 +25,7 @@ abstract class LocaleKeys {
   static const currentStock = 'currentStock';
   static const all = 'all';
   static const sale = 'sale';
+  static const returned = 'returned';
   static const purchase = 'purchase';
   static const payment = 'payment';
   static const receipt = 'receipt';
@@ -161,4 +162,30 @@ abstract class LocaleKeys {
   static const add = 'add';
   static const cancel = 'cancel';
   static const save = 'save';
+  static const issue_date = 'issue_date';
+  static const select_date = 'select_date';
+  static const due_date = 'due_date';
+  static const optional = 'optional';
+  static const details = 'details';
+  static const items = 'items';
+  static const summary = 'summary';
+  static const subtotal = 'subtotal';
+  static const quantity = 'quantity';
+  static const unit_price = 'unit_price';
+  static const invoice_number = 'invoice_number';
+  static const select_product = 'select_product';
+  static const discount = 'discount';
+  static const tax = 'tax';
+  static const total = 'total';
+  static const remaining = 'remaining';
+  static const paid = 'paid';
+  static const unpaid = 'unpaid';
+  static const partialPaid = 'partialPaid';
+  static const amountExceedsTotal = 'amountExceedsTotal';
+  static const amountPaid = 'amountPaid';
+  static const saveInvoice = 'saveInvoice';
+  static const selectContact = 'selectContact';
+  static const addAtLeastOneItem = 'addAtLeastOneItem';
+  static const invoiceSaved = 'invoiceSaved';
+
 }
