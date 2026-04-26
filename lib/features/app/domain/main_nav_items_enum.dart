@@ -7,12 +7,14 @@ enum MainNavItemsEnum {
   dashboard,
   persons,
   inventory,
+  transactions,
   reports;
 
   String routeName() => switch (this) {
     MainNavItemsEnum.dashboard => routeNames.dashboard,
     MainNavItemsEnum.inventory => routeNames.inventory,
     MainNavItemsEnum.persons => routeNames.persons,
+    MainNavItemsEnum.transactions => routeNames.transactions,
     MainNavItemsEnum.reports => routeNames.reports,
   };
 
@@ -20,6 +22,7 @@ enum MainNavItemsEnum {
     MainNavItemsEnum.dashboard => Assets.icons.dashboard,
     MainNavItemsEnum.persons => Assets.icons.persons,
     MainNavItemsEnum.inventory => Assets.icons.warehouse,
+    MainNavItemsEnum.transactions => Assets.icons.invoice,
     MainNavItemsEnum.reports => Assets.icons.charts,
   };
 
@@ -27,6 +30,7 @@ enum MainNavItemsEnum {
     MainNavItemsEnum.dashboard => Assets.icons.dashboard,
     MainNavItemsEnum.persons => Assets.icons.persons,
     MainNavItemsEnum.inventory => Assets.icons.warehouse,
+    MainNavItemsEnum.transactions => Assets.icons.invoice,
     MainNavItemsEnum.reports => Assets.icons.charts,
   };
 
@@ -34,6 +38,7 @@ enum MainNavItemsEnum {
     MainNavItemsEnum.dashboard => LocaleKeys.dashboard.tr(),
     MainNavItemsEnum.persons => LocaleKeys.persons.tr(),
     MainNavItemsEnum.inventory => LocaleKeys.inventory.tr(),
+    MainNavItemsEnum.transactions => LocaleKeys.transactions.tr(),
     MainNavItemsEnum.reports => LocaleKeys.reports.tr(),
   };
 }

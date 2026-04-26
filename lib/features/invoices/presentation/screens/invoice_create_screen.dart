@@ -5,6 +5,7 @@ import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
 import 'package:sodais_finance/core/widgets/buttons/type_toggle_buttons.dart';
 import 'package:sodais_finance/core/widgets/cards/custom_card.dart';
+import 'package:sodais_finance/core/widgets/dialogs/delete_confirmation_dialog.dart';
 import 'package:sodais_finance/core/widgets/text_field/custom_text_field.dart';
 import 'package:sodais_finance/features/invoices/application/providers/invoice_providers.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_controller.dart';
@@ -16,9 +17,10 @@ import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_su
 import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_total_amount.dart';
 
 class InvoiceCreateScreen extends ConsumerStatefulWidget {
-  const InvoiceCreateScreen({super.key, required this.type});
+  const InvoiceCreateScreen({super.key, required this.type, this.invoiceId});
 
   final InvoiceType type;
+  final int? invoiceId;
 
   @override
   ConsumerState<InvoiceCreateScreen> createState() =>
@@ -31,6 +33,13 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   late final TextEditingController _discountController;
   late final TextEditingController _invoiceNumberController;
   bool _isSubmitting = false;
+  bool _isInitializingInvoice = false;
+  String? _initializationError;
+
+  bool get _isEditing => widget.invoiceId != null;
+
+  InvoiceControllerArgs get _controllerArgs =>
+      InvoiceControllerArgs(type: widget.type, invoiceId: widget.invoiceId);
 
   @override
   void initState() {
@@ -38,6 +47,11 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     _amountPaidController = TextEditingController(text: '0');
     _discountController = TextEditingController(text: '0');
     _invoiceNumberController = TextEditingController();
+
+    if (_isEditing) {
+      _isInitializingInvoice = true;
+      Future.microtask(_loadExistingInvoice);
+    }
   }
 
   @override
@@ -46,6 +60,37 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     _discountController.dispose();
     _invoiceNumberController.dispose();
     super.dispose();
+  }
+
+  Future<void> _loadExistingInvoice() async {
+    final invoiceId = widget.invoiceId;
+    if (invoiceId == null) return;
+
+    if (mounted) {
+      setState(() {
+        _isInitializingInvoice = true;
+        _initializationError = null;
+      });
+    }
+
+    try {
+      await ref
+          .read(invoiceControllerProvider(_controllerArgs).notifier)
+          .loadExistingInvoice(invoiceId);
+      if (!mounted) return;
+      setState(() {
+        _isInitializingInvoice = false;
+        _initializationError = null;
+      });
+    } catch (error) {
+      if (!mounted) return;
+      setState(() {
+        _isInitializingInvoice = false;
+        _initializationError = error is StateError
+            ? error.message.toString()
+            : error.toString();
+      });
+    }
   }
 
   void _syncController(TextEditingController controller, String value) {
@@ -86,9 +131,52 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     try {
       await controller.saveInvoice();
       if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            _isEditing
+                ? LocaleKeys.invoiceUpdated.tr()
+                : LocaleKeys.invoiceSaved.tr(),
+          ),
+        ),
+      );
+      Navigator.of(context).pop();
+    } catch (error) {
+      if (!mounted) return;
+      final message = error is StateError
+          ? error.message.toString()
+          : error.toString();
       ScaffoldMessenger.of(
         context,
-      ).showSnackBar(SnackBar(content: Text(LocaleKeys.invoiceSaved.tr())));
+      ).showSnackBar(SnackBar(content: Text(message)));
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isSubmitting = false;
+        });
+      }
+    }
+  }
+
+  Future<void> _deleteInvoice(InvoiceController controller) async {
+    final confirmed = await showDeleteConfirmationDialog(
+      context: context,
+      title: LocaleKeys.deleteInvoice.tr(),
+      message: LocaleKeys.deleteInvoiceConfirmation.tr(),
+    );
+
+    if (!confirmed) return;
+
+    setState(() {
+      _isSubmitting = true;
+    });
+
+    try {
+      await controller.deleteInvoice();
+      if (!mounted) return;
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(LocaleKeys.invoiceDeleted.tr())));
       Navigator.of(context).pop();
     } catch (error) {
       if (!mounted) return;
@@ -109,10 +197,46 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final invoiceState = ref.watch(invoiceControllerProvider(widget.type));
-    final invoiceController = ref.read(
-      invoiceControllerProvider(widget.type).notifier,
-    );
+    final controllerProvider = invoiceControllerProvider(_controllerArgs);
+    final invoiceState = ref.watch(controllerProvider);
+    final invoiceController = ref.read(controllerProvider.notifier);
+
+    if (_isInitializingInvoice || _initializationError != null) {
+      return Scaffold(
+        appBar: AppBar(title: Text(LocaleKeys.editInvoice.tr())),
+        body: Center(
+          child: _isInitializingInvoice
+              ? const CircularProgressIndicator()
+              : Padding(
+                  padding: EdgeInsets.all(sizeConstants.spacingMedium),
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.error_outline,
+                        size: sizeConstants.iconXLarge,
+                        color: Theme.of(context).colorScheme.error,
+                      ),
+                      SizedBox(height: sizeConstants.spacingSmall),
+                      Text(
+                        _initializationError ??
+                            LocaleKeys.failedToLoadInvoices.tr(),
+                        textAlign: TextAlign.center,
+                        style: Theme.of(context).textTheme.bodyMedium,
+                      ),
+                      SizedBox(height: sizeConstants.spacingSmall),
+                      FilledButton.icon(
+                        onPressed: _loadExistingInvoice,
+                        icon: const Icon(Icons.refresh),
+                        label: Text(LocaleKeys.retry.tr()),
+                      ),
+                    ],
+                  ),
+                ),
+        ),
+      );
+    }
+
     final personsAsync = ref.watch(invoiceContactsProvider(invoiceState.type));
     final productsAsync = ref.watch(invoiceProductsProvider);
 
@@ -137,7 +261,23 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         : null;
 
     return Scaffold(
-      appBar: AppBar(title: Text(invoiceState.type.createTitle)),
+      appBar: AppBar(
+        title: Text(
+          _isEditing
+              ? LocaleKeys.editInvoice.tr()
+              : invoiceState.type.createTitle,
+        ),
+        actions: [
+          if (_isEditing)
+            IconButton(
+              onPressed: _isSubmitting
+                  ? null
+                  : () => _deleteInvoice(invoiceController),
+              icon: const Icon(Icons.delete_outline),
+              tooltip: LocaleKeys.deleteInvoice.tr(),
+            ),
+        ],
+      ),
       bottomNavigationBar: SafeArea(
         top: false,
         child: Container(
@@ -156,6 +296,9 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
           child: InvoiceSubmitButton(
             isSubmitting: _isSubmitting,
             onPressed: () => _submitInvoice(invoiceController, invoiceState),
+            label: _isEditing
+                ? LocaleKeys.updateInvoice.tr()
+                : LocaleKeys.saveInvoice.tr(),
           ),
         ),
       ),

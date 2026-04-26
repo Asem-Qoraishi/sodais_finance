@@ -16,7 +16,7 @@ final class InvoiceControllerProvider
     extends $NotifierProvider<InvoiceController, InvoiceState> {
   InvoiceControllerProvider._({
     required InvoiceControllerFamily super.from,
-    required InvoiceType? super.argument,
+    required InvoiceControllerArgs super.argument,
   }) : super(
          retry: null,
          name: r'invoiceControllerProvider',
@@ -58,7 +58,7 @@ final class InvoiceControllerProvider
   }
 }
 
-String _$invoiceControllerHash() => r'4b4758242db3bfa92ebf5a4d2fc016e6db4b456f';
+String _$invoiceControllerHash() => r'd12fdc68132177636267201763a9f3c31fb7616d';
 
 final class InvoiceControllerFamily extends $Family
     with
@@ -67,7 +67,7 @@ final class InvoiceControllerFamily extends $Family
           InvoiceState,
           InvoiceState,
           InvoiceState,
-          InvoiceType?
+          InvoiceControllerArgs
         > {
   InvoiceControllerFamily._()
     : super(
@@ -78,18 +78,18 @@ final class InvoiceControllerFamily extends $Family
         isAutoDispose: true,
       );
 
-  InvoiceControllerProvider call(InvoiceType? type) =>
-      InvoiceControllerProvider._(argument: type, from: this);
+  InvoiceControllerProvider call(InvoiceControllerArgs args) =>
+      InvoiceControllerProvider._(argument: args, from: this);
 
   @override
   String toString() => r'invoiceControllerProvider';
 }
 
 abstract class _$InvoiceController extends $Notifier<InvoiceState> {
-  late final _$args = ref.$arg as InvoiceType?;
-  InvoiceType? get type => _$args;
+  late final _$args = ref.$arg as InvoiceControllerArgs;
+  InvoiceControllerArgs get args => _$args;
 
-  InvoiceState build(InvoiceType? type);
+  InvoiceState build(InvoiceControllerArgs args);
   @$mustCallSuper
   @override
   void runBuild() {

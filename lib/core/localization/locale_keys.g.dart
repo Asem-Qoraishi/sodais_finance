@@ -2,12 +2,13 @@
 
 // ignore_for_file: constant_identifier_names
 
-abstract class  LocaleKeys {
+abstract class LocaleKeys {
   static const appName = 'appName';
   static const version = 'version';
   static const dashboard = 'dashboard';
   static const persons = 'persons';
   static const inventory = 'inventory';
+  static const transactions = 'transactions';
   static const finance = 'finance';
   static const reports = 'reports';
   static const totalBalance = 'totalBalance';
@@ -73,8 +74,10 @@ abstract class  LocaleKeys {
   static const clearSearch = 'clearSearch';
   static const addNewProduct = 'addNewProduct';
   static const editProduct = 'editProduct';
+  static const editPerson = 'editPerson';
   static const addNewPerson = 'addNewPerson';
   static const saveProduct = 'saveProduct';
+  static const updatePerson = 'updatePerson';
   static const updateProduct = 'updateProduct';
   static const fieldRequired = 'fieldRequired';
   static const fieldOptional = 'fieldOptional';
@@ -161,12 +164,18 @@ abstract class  LocaleKeys {
   static const image = 'image';
   static const add = 'add';
   static const cancel = 'cancel';
+  static const delete = 'delete';
+  static const retry = 'retry';
   static const save = 'save';
   static const issue_date = 'issue_date';
   static const select_date = 'select_date';
   static const due_date = 'due_date';
   static const optional = 'optional';
   static const details = 'details';
+  static const invoices = 'invoices';
+  static const invoicePayment = 'invoicePayment';
+  static const manualEntry = 'manualEntry';
+  static const linkedInvoice = 'linkedInvoice';
   static const items = 'items';
   static const summary = 'summary';
   static const subtotal = 'subtotal';
@@ -184,8 +193,19 @@ abstract class  LocaleKeys {
   static const amountExceedsTotal = 'amountExceedsTotal';
   static const amountPaid = 'amountPaid';
   static const saveInvoice = 'saveInvoice';
+  static const updateInvoice = 'updateInvoice';
+  static const editInvoice = 'editInvoice';
   static const selectContact = 'selectContact';
   static const addAtLeastOneItem = 'addAtLeastOneItem';
   static const invoiceSaved = 'invoiceSaved';
-
+  static const invoiceUpdated = 'invoiceUpdated';
+  static const invoiceDeleted = 'invoiceDeleted';
+  static const deleteInvoice = 'deleteInvoice';
+  static const deletePersonConfirmation = 'deletePersonConfirmation';
+  static const deleteInvoiceConfirmation = 'deleteInvoiceConfirmation';
+  static const noInvoicesFound = 'noInvoicesFound';
+  static const failedToLoadInvoices = 'failedToLoadInvoices';
+  static const noTransactionsFound = 'noTransactionsFound';
+  static const failedToLoadTransactions = 'failedToLoadTransactions';
+  static const unknownContact = 'unknownContact';
 }

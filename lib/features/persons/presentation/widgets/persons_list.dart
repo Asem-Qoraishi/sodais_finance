@@ -1,5 +1,7 @@
 // lib/features/persons/presentation/widgets/persons_list.dart
 import 'package:flutter/material.dart';
+import 'package:go_router/go_router.dart';
+import 'package:sodais_finance/config/app_router.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/presentation/widgets/person_card.dart';
@@ -15,7 +17,11 @@ class PersonsList extends StatelessWidget {
       itemCount: persons.length,
       separatorBuilder: (context, index) =>
           SizedBox(height: sizeConstants.spacingXSmall),
-      itemBuilder: (context, index) => PersonCard(person: persons[index]),
+      itemBuilder: (context, index) => PersonCard(
+        person: persons[index],
+        onTap: () =>
+            context.pushNamed(routeNames.editPerson, extra: persons[index]),
+      ),
     );
   }
 }

@@ -4,6 +4,8 @@ import 'package:sodais_finance/features/app/presentation/main_wrapper.dart';
 import 'package:sodais_finance/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 import 'package:sodais_finance/features/invoices/presentation/screens/invoice_create_screen.dart';
+import 'package:sodais_finance/features/invoices/presentation/screens/invoices_screen.dart';
+import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/presentation/add_new_person_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/persons_screen.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
@@ -11,6 +13,7 @@ import 'package:sodais_finance/features/products/presentation/add_new_product_sc
 import 'package:sodais_finance/features/products/presentation/inventory_screen.dart';
 import 'package:sodais_finance/features/products/presentation/product_categories_screen.dart';
 import 'package:sodais_finance/features/reports/presentation/reports_screen.dart';
+import 'package:sodais_finance/features/transactions/presentation/transactions_screen.dart';
 
 part 'route_names.dart';
 
@@ -35,6 +38,9 @@ class AppRouter {
   static final _shellNavigatorInventoryKey = GlobalKey<NavigatorState>(
     debugLabel: 'shellInventory',
   );
+  static final _shellNavigatorInvoicesKey = GlobalKey<NavigatorState>(
+    debugLabel: 'shellInvoices',
+  );
   static final _shellNavigatorReportsKey = GlobalKey<NavigatorState>(
     debugLabel: 'shellReports',
   );
@@ -57,6 +63,15 @@ class AppRouter {
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.persons}/${routeNames.editPerson}',
+        name: routeNames.editPerson,
+        builder: (context, state) {
+          final person = state.extra is Person ? state.extra as Person : null;
+          return AddNewPersonScreen(editingPerson: person);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
         path: '/${routeNames.inventory}/${routeNames.addNewProduct}',
         name: routeNames.addNewProduct,
         builder: (context, state) => const AddNewProductScreen(),
@@ -70,6 +85,26 @@ class AppRouter {
               ? state.extra as Product
               : null;
           return AddNewProductScreen(editingProduct: product);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path:
+            '/${routeNames.transactions}/${routeNames.editInvoice}/:invoiceId',
+        name: routeNames.editInvoice,
+        builder: (context, state) {
+          final invoiceId = int.tryParse(
+            state.pathParameters['invoiceId'] ?? '',
+          );
+
+          if (invoiceId == null) {
+            return const InvoicesScreen();
+          }
+
+          return InvoiceCreateScreen(
+            type: InvoiceType.sale,
+            invoiceId: invoiceId,
+          );
         },
       ),
       GoRoute(
@@ -132,6 +167,16 @@ class AppRouter {
                 builder: (context, state) => const ProductCategoriesScreen(),
               ),
             ],
+          ),
+        ],
+      ),
+      StatefulShellBranch(
+        navigatorKey: _shellNavigatorInvoicesKey,
+        routes: [
+          GoRoute(
+            path: "/${routeNames.transactions}",
+            name: routeNames.transactions,
+            builder: (context, state) => const TransactionsScreen(),
           ),
         ],
       ),

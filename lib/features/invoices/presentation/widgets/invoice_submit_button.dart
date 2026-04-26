@@ -8,10 +8,12 @@ class InvoiceSubmitButton extends StatelessWidget {
     super.key,
     required this.isSubmitting,
     required this.onPressed,
+    required this.label,
   });
 
   final bool isSubmitting;
   final VoidCallback onPressed;
+  final String label;
 
   @override
   Widget build(BuildContext context) {
@@ -27,9 +29,7 @@ class InvoiceSubmitButton extends StatelessWidget {
               ),
             )
           : Icon(Icons.save_outlined, size: sizeConstants.iconMedium),
-      label: Text(
-        isSubmitting ? LocaleKeys.saving.tr() : LocaleKeys.saveInvoice.tr(),
-      ),
+      label: Text(isSubmitting ? LocaleKeys.saving.tr() : label),
     );
   }
 }

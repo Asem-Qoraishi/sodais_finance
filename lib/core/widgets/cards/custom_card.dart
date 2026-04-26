@@ -8,12 +8,14 @@ class CustomCard extends StatelessWidget {
     this.padding,
     required this.child,
     this.elevation = 0,
+    this.onTap,
   });
 
   final EdgeInsetsGeometry? margin;
   final EdgeInsetsGeometry? padding;
   final Widget child;
   final double elevation;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -25,9 +27,12 @@ class CustomCard extends StatelessWidget {
         side: BorderSide(color: Theme.of(context).dividerColor, width: 1),
       ),
       margin: margin,
-      child: Padding(
-        padding: padding ?? EdgeInsets.all(sizeConstants.spacingMedium),
-        child: child,
+      child: InkWell(
+        onTap: onTap,
+        child: Padding(
+          padding: padding ?? EdgeInsets.all(sizeConstants.spacingMedium),
+          child: child,
+        ),
       ),
     );
   }

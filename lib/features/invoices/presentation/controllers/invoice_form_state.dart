@@ -102,6 +102,7 @@ class InvoiceState {
   final DateTime date;
   final DateTime? dueDate;
   final List<InvoiceItem> items;
+  final Map<String, int> editingStockAllowanceByProduct;
   final PaymentStatus paymentStatus;
   final double amountPaid;
   final double taxRate;
@@ -114,6 +115,7 @@ class InvoiceState {
     required this.date,
     this.dueDate,
     this.items = const [],
+    this.editingStockAllowanceByProduct = const {},
     this.paymentStatus = PaymentStatus.paid,
     this.amountPaid = 0.0,
     this.taxRate = 0.0,
@@ -132,6 +134,7 @@ class InvoiceState {
     DateTime? date,
     Object? dueDate = _invoiceUnset,
     List<InvoiceItem>? items,
+    Map<String, int>? editingStockAllowanceByProduct,
     PaymentStatus? paymentStatus,
     double? amountPaid,
     double? taxRate,
@@ -148,6 +151,8 @@ class InvoiceState {
           ? this.dueDate
           : dueDate as DateTime?,
       items: items ?? this.items,
+      editingStockAllowanceByProduct:
+          editingStockAllowanceByProduct ?? this.editingStockAllowanceByProduct,
       paymentStatus: paymentStatus ?? this.paymentStatus,
       amountPaid: amountPaid ?? this.amountPaid,
       taxRate: taxRate ?? this.taxRate,
@@ -184,7 +189,8 @@ extension InvoiceStateProductX on InvoiceState {
     if (!type.tracksStock) return product.stock;
 
     final remainingStock =
-        product.stock -
+        product.stock +
+        (editingStockAllowanceByProduct[product.id] ?? 0) -
         allocatedQuantityForProduct(
           product.id,
           excludingItemId: excludingItemId,

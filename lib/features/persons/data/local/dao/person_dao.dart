@@ -1,9 +1,12 @@
+import 'dart:async';
+
 import 'package:drift/drift.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sodais_finance/features/app/data/app_database.dart';
 import 'package:sodais_finance/features/persons/data/local/tables/person_table.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/domain/persons_query_options.dart';
+import 'package:sodais_finance/features/transactions/data/local/transactions_drift_store.dart';
 
 part 'person_dao.g.dart';
 
@@ -11,18 +14,30 @@ part 'person_dao.g.dart';
 class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
   PersonDao(super.db);
 
-  Person _mapToPerson(PersonTableData row) {
+  static const _personColumns = '''
+    person_table.id,
+    person_table.name,
+    person_table.image,
+    person_table.phone,
+    person_table.address,
+    person_table.email,
+    person_table.type,
+    person_table.created_at,
+    person_table.updated_at
+  ''';
+
+  Person _mapToPersonRow(QueryRow row) {
     return Person(
-      id: row.id.toString(),
-      image: row.image,
-      name: row.name,
-      phone: row.phone,
-      address: row.address,
-      email: row.email,
-      type: PersonType.fromValue(row.type),
-      balance: row.balance ?? 0.0,
-      createdAt: row.createdAt,
-      updatedAt: row.updatedAt,
+      id: row.read<int>('id').toString(),
+      image: row.readNullable<String>('image'),
+      name: row.read<String>('name'),
+      phone: row.readNullable<String>('phone'),
+      address: row.readNullable<String>('address'),
+      email: row.readNullable<String>('email'),
+      type: PersonType.fromValue(row.read<String>('type')),
+      balance: row.read<double>('computed_balance'),
+      createdAt: row.read<DateTime>('created_at'),
+      updatedAt: row.read<DateTime>('updated_at'),
     );
   }
 
@@ -33,104 +48,77 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
     int page = 0,
     int pageSize = personsPageSize,
   }) {
-    final queryBuilder = select(personTable);
     final normalizedQuery = query.trim();
     final resolvedPage = page < 0 ? 0 : page;
     final resolvedPageSize = pageSize <= 0 ? personsPageSize : pageSize;
     final offset = resolvedPage * resolvedPageSize;
+    final variables = <Variable>[];
+    final whereClauses = <String>[];
 
     if (normalizedQuery.isNotEmpty) {
       final pattern = '%$normalizedQuery%';
-      queryBuilder.where((t) {
-        final phone = coalesce<String>([t.phone, const Constant('')]);
-        final email = coalesce<String>([t.email, const Constant('')]);
-        final address = coalesce<String>([t.address, const Constant('')]);
-
-        return t.name.like(pattern) |
-            phone.like(pattern) |
-            email.like(pattern) |
-            address.like(pattern) |
-            t.type.like(pattern);
-      });
+      whereClauses.add('''
+        (
+          person_table.name LIKE ?
+          OR COALESCE(person_table.phone, '') LIKE ?
+          OR COALESCE(person_table.email, '') LIKE ?
+          OR COALESCE(person_table.address, '') LIKE ?
+          OR person_table.type LIKE ?
+        )
+      ''');
+      for (var i = 0; i < 5; i++) {
+        variables.add(Variable<String>(pattern));
+      }
     }
 
-    _applyTypeFilter(queryBuilder, typeFilter);
-    queryBuilder.orderBy(_orderingTerms(orderBy));
-    queryBuilder.limit(resolvedPageSize, offset: offset);
-
-    return queryBuilder.watch().map(
-      (rows) => rows.map(_mapToPerson).toList(growable: false),
-    );
-  }
-
-  void _applyTypeFilter(
-    SimpleSelectStatement<$PersonTableTable, PersonTableData> query,
-    PersonTypeFilter typeFilter,
-  ) {
-    switch (typeFilter) {
-      case PersonTypeFilter.all:
-        return;
-      case PersonTypeFilter.customers:
-        query.where(
-          (t) =>
-              t.type.equals(PersonType.customer.value) |
-              t.type.equals(PersonType.both.value),
-        );
-        return;
-      case PersonTypeFilter.suppliers:
-        query.where(
-          (t) =>
-              t.type.equals(PersonType.supplier.value) |
-              t.type.equals(PersonType.both.value),
-        );
-        return;
-      case PersonTypeFilter.owesYou:
-        query.where((t) => t.balance.isBiggerThanValue(0));
-        return;
-      case PersonTypeFilter.youOwe:
-        query.where((t) => t.balance.isSmallerThanValue(0));
-        return;
+    final typeFilterClause = _typeFilterClause(typeFilter);
+    if (typeFilterClause case final clause?) {
+      whereClauses.add(clause);
     }
-  }
 
-  List<OrderingTerm Function($PersonTableTable)> _orderingTerms(
-    PersonsOrderBy orderBy,
-  ) {
-    switch (orderBy) {
-      case PersonsOrderBy.recentlyActive:
-        return [(t) => OrderingTerm.desc(t.updatedAt)];
-      case PersonsOrderBy.lastPayment:
-        return [
-          (t) => OrderingTerm.asc(t.balance),
-          (t) => OrderingTerm.desc(t.updatedAt),
-        ];
-      case PersonsOrderBy.lastReceipt:
-        return [
-          (t) => OrderingTerm.desc(t.balance),
-          (t) => OrderingTerm.desc(t.updatedAt),
-        ];
-      case PersonsOrderBy.alphabetAsc:
-        return [(t) => OrderingTerm.asc(t.name)];
-      case PersonsOrderBy.alphabetDesc:
-        return [(t) => OrderingTerm.desc(t.name)];
-      case PersonsOrderBy.highestDebt:
-        return [(t) => OrderingTerm.asc(t.balance)];
-      case PersonsOrderBy.highestCredit:
-        return [(t) => OrderingTerm.desc(t.balance)];
-      case PersonsOrderBy.oldest:
-        return [(t) => OrderingTerm.asc(t.createdAt)];
-      case PersonsOrderBy.newest:
-        return [(t) => OrderingTerm.desc(t.createdAt)];
-    }
+    final havingClause = _balanceFilterClause(typeFilter);
+    variables.add(Variable<int>(resolvedPageSize));
+    variables.add(Variable<int>(offset));
+
+    return customSelect(
+      '''
+      SELECT
+        $_personColumns,
+        ${TransactionsDriftStore.contactBalanceExpressionSql} AS computed_balance
+      FROM person_table
+      LEFT JOIN transaction_table
+        ON transaction_table.contact_id = person_table.id
+      ${whereClauses.isEmpty ? '' : 'WHERE ${whereClauses.join(' AND ')}'}
+      GROUP BY $_personColumns
+      ${havingClause == null ? '' : 'HAVING $havingClause'}
+      ORDER BY ${_orderingClause(orderBy)}
+      LIMIT ? OFFSET ?
+      ''',
+      variables: variables,
+      readsFrom: {personTable, attachedDatabase.transactionTable},
+    ).watch().map((rows) => rows.map(_mapToPersonRow).toList(growable: false));
   }
 
   Stream<Person?> watchPersonById(String id) {
     final intId = int.tryParse(id) ?? -1;
-    final query = select(personTable)..where((t) => t.id.equals(intId));
+    if (intId < 0) {
+      return Stream.value(null);
+    }
 
-    return query.watchSingleOrNull().map(
-      (row) => row == null ? null : _mapToPerson(row),
-    );
+    return customSelect(
+      '''
+      SELECT
+        $_personColumns,
+        ${TransactionsDriftStore.contactBalanceExpressionSql} AS computed_balance
+      FROM person_table
+      LEFT JOIN transaction_table
+        ON transaction_table.contact_id = person_table.id
+      WHERE person_table.id = ?
+      GROUP BY $_personColumns
+      ''',
+      variables: [Variable<int>(intId)],
+      readsFrom: {personTable, attachedDatabase.transactionTable},
+    ).watch().map((rows) => rows.isEmpty ? null : _mapToPersonRow(rows.first));
   }
 
   Future<int> insertPerson(Person person) {
@@ -142,7 +130,7 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
         address: Value(person.address),
         email: Value(person.email),
         type: Value(person.type.value),
-        balance: Value(person.balance),
+        balance: const Value(0),
         updatedAt: DateTime.now(),
       ),
     );
@@ -159,7 +147,7 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
         address: Value(person.address),
         email: Value(person.email),
         type: Value(person.type.value),
-        balance: Value(person.balance),
+        balance: const Value(0),
         createdAt: Value(person.createdAt),
         updatedAt: Value(DateTime.now()),
       ),
@@ -169,6 +157,90 @@ class PersonDao extends DatabaseAccessor<AppDatabase> with _$PersonDaoMixin {
   Future<int> deletePerson(String id) {
     final intId = int.tryParse(id) ?? -1;
     return (delete(personTable)..where((t) => t.id.equals(intId))).go();
+  }
+
+  String? _typeFilterClause(PersonTypeFilter typeFilter) {
+    switch (typeFilter) {
+      case PersonTypeFilter.all:
+      case PersonTypeFilter.owesYou:
+      case PersonTypeFilter.youOwe:
+        return null;
+      case PersonTypeFilter.customers:
+        return '''
+          (
+            person_table.type = '${PersonType.customer.value}'
+            OR person_table.type = '${PersonType.both.value}'
+          )
+        ''';
+      case PersonTypeFilter.suppliers:
+        return '''
+          (
+            person_table.type = '${PersonType.supplier.value}'
+            OR person_table.type = '${PersonType.both.value}'
+          )
+        ''';
+    }
+  }
+
+  String? _balanceFilterClause(PersonTypeFilter typeFilter) {
+    switch (typeFilter) {
+      case PersonTypeFilter.owesYou:
+        return 'computed_balance > 0';
+      case PersonTypeFilter.youOwe:
+        return 'computed_balance < 0';
+      case PersonTypeFilter.all:
+      case PersonTypeFilter.customers:
+      case PersonTypeFilter.suppliers:
+        return null;
+    }
+  }
+
+  String _orderingClause(PersonsOrderBy orderBy) {
+    switch (orderBy) {
+      case PersonsOrderBy.recentlyActive:
+        return '''
+          COALESCE(MAX(transaction_table.date), person_table.updated_at) DESC,
+          person_table.id DESC
+        ''';
+      case PersonsOrderBy.lastPayment:
+        return '''
+          COALESCE(
+            MAX(
+              CASE
+                WHEN transaction_table.type = 'income'
+                THEN transaction_table.date
+              END
+            ),
+            person_table.updated_at
+          ) DESC,
+          computed_balance ASC
+        ''';
+      case PersonsOrderBy.lastReceipt:
+        return '''
+          COALESCE(
+            MAX(
+              CASE
+                WHEN transaction_table.type = 'expense'
+                THEN transaction_table.date
+              END
+            ),
+            person_table.updated_at
+          ) DESC,
+          computed_balance DESC
+        ''';
+      case PersonsOrderBy.alphabetAsc:
+        return 'person_table.name ASC';
+      case PersonsOrderBy.alphabetDesc:
+        return 'person_table.name DESC';
+      case PersonsOrderBy.highestDebt:
+        return 'computed_balance ASC, person_table.name ASC';
+      case PersonsOrderBy.highestCredit:
+        return 'computed_balance DESC, person_table.name ASC';
+      case PersonsOrderBy.oldest:
+        return 'person_table.created_at ASC';
+      case PersonsOrderBy.newest:
+        return 'person_table.created_at DESC';
+    }
   }
 }
 

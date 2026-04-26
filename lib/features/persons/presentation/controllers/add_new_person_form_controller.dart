@@ -57,6 +57,14 @@ class AddNewPersonForm extends _$AddNewPersonForm {
   @override
   AddNewPersonFormState build() => const AddNewPersonFormState();
 
+  void initializeForEditing(Person person) {
+    state = state.copyWith(
+      type: person.type,
+      selectedImagePath: person.image,
+      clearError: true,
+    );
+  }
+
   void setType(PersonType type) {
     state = state.copyWith(type: type, clearError: true);
   }
@@ -91,6 +99,7 @@ class AddNewPersonForm extends _$AddNewPersonForm {
   Future<bool> submit({
     required String name,
     required String balanceText,
+    Person? editingPerson,
     String? phone,
     String? address,
     String? email,
@@ -100,27 +109,64 @@ class AddNewPersonForm extends _$AddNewPersonForm {
     state = state.copyWith(isSaving: true, clearError: true);
 
     try {
-      final rawBalance = double.tryParse(balanceText.trim()) ?? 0.0;
-      final openingBalance =
-          state.openingBalanceDirection == OpeningBalanceDirection.youReceive
-          ? rawBalance.abs()
-          : -rawBalance.abs();
       final persistedImagePath = await _persistImageIfNeeded(
         state.selectedImagePath,
       );
 
+      if (editingPerson == null) {
+        final rawBalance = double.tryParse(balanceText.trim()) ?? 0.0;
+        final openingBalance =
+            state.openingBalanceDirection == OpeningBalanceDirection.youReceive
+            ? rawBalance.abs()
+            : -rawBalance.abs();
+
+        await ref
+            .read(personsControllerProvider.notifier)
+            .addPerson(
+              name: name.trim(),
+              image: persistedImagePath,
+              phone: _trimToNull(phone),
+              address: _trimToNull(address),
+              email: _trimToNull(email),
+              type: state.type,
+              balance: openingBalance,
+            );
+      } else {
+        await ref
+            .read(personsControllerProvider.notifier)
+            .updatePerson(
+              Person(
+                id: editingPerson.id,
+                image: persistedImagePath,
+                name: name.trim(),
+                phone: _trimToNull(phone),
+                address: _trimToNull(address),
+                email: _trimToNull(email),
+                type: state.type,
+                balance: editingPerson.balance,
+                createdAt: editingPerson.createdAt,
+                updatedAt: DateTime.now(),
+              ),
+            );
+      }
+
+      state = state.copyWith(isSaving: false, clearError: true);
+      return true;
+    } catch (error) {
+      state = state.copyWith(isSaving: false, errorMessage: error.toString());
+      return false;
+    }
+  }
+
+  Future<bool> delete(Person person) async {
+    if (state.isSaving) return false;
+
+    state = state.copyWith(isSaving: true, clearError: true);
+
+    try {
       await ref
           .read(personsControllerProvider.notifier)
-          .addPerson(
-            name: name.trim(),
-            image: persistedImagePath,
-            phone: _trimToNull(phone),
-            address: _trimToNull(address),
-            email: _trimToNull(email),
-            type: state.type,
-            balance: openingBalance,
-          );
-
+          .deletePerson(person.id);
       state = state.copyWith(isSaving: false, clearError: true);
       return true;
     } catch (error) {

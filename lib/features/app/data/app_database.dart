@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -52,6 +52,16 @@ class AppDatabase extends _$AppDatabase {
         await migrator.createTable(checkTable);
         await migrator.createTable(loanTable);
         await migrator.createTable(installmentTable);
+      }
+      if (from >= 3 && from < 4) {
+        await migrator.addColumn(invoiceTable, invoiceTable.amountPaid);
+        await customStatement('''
+          UPDATE invoice_table
+          SET amount_paid = CASE
+            WHEN status = 'paid' THEN final_amount
+            ELSE 0
+          END
+        ''');
       }
     },
   );

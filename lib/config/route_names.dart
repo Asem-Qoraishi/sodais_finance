@@ -11,11 +11,14 @@ class RouteNames {
   final String dashboard = 'dashboard';
   final String persons = 'persons';
   final String inventory = 'inventory';
+  final String transactions = 'invoices';
   final String finance = 'finance';
   final String reports = 'reports';
   final String addNewPerson = 'addNewPerson';
+  final String editPerson = 'editPerson';
   final String addNewProduct = 'addNewProduct';
   final String editProduct = 'editProduct';
+  final String editInvoice = 'editInvoice';
   final String productCategories = 'productCategories';
   final String manageProductCategories = 'manageProductCategories';
   final String addNewSale = 'addNewSale';

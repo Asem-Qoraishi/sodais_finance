@@ -7,12 +7,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/widgets/dialogs/delete_confirmation_dialog.dart';
 import 'package:sodais_finance/core/widgets/text_field/custom_text_field.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/presentation/controllers/add_new_person_form_controller.dart';
 
 class AddNewPersonScreen extends ConsumerStatefulWidget {
-  const AddNewPersonScreen({super.key});
+  const AddNewPersonScreen({super.key, this.editingPerson});
+
+  final Person? editingPerson;
 
   @override
   ConsumerState<AddNewPersonScreen> createState() => _AddNewPersonScreenState();
@@ -25,6 +28,27 @@ class _AddNewPersonScreenState extends ConsumerState<AddNewPersonScreen> {
   final _addressController = TextEditingController();
   final _emailController = TextEditingController();
   final _balanceController = TextEditingController();
+
+  bool get _isEditing => widget.editingPerson != null;
+
+  @override
+  void initState() {
+    super.initState();
+    final editingPerson = widget.editingPerson;
+    if (editingPerson == null) return;
+
+    _nameController.text = editingPerson.name;
+    _phoneController.text = editingPerson.phone ?? '';
+    _addressController.text = editingPerson.address ?? '';
+    _emailController.text = editingPerson.email ?? '';
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref
+          .read(addNewPersonFormProvider.notifier)
+          .initializeForEditing(editingPerson);
+    });
+  }
 
   @override
   void dispose() {
@@ -46,9 +70,33 @@ class _AddNewPersonScreenState extends ConsumerState<AddNewPersonScreen> {
       address: _addressController.text,
       email: _emailController.text,
       balanceText: _balanceController.text,
+      editingPerson: widget.editingPerson,
     );
 
     if (didSave && mounted) {
+      context.pop();
+    }
+  }
+
+  Future<void> _handleDelete() async {
+    final person = widget.editingPerson;
+    if (person == null) return;
+
+    final shouldDelete = await showDeleteConfirmationDialog(
+      context: context,
+      title: LocaleKeys.delete.tr(),
+      message: LocaleKeys.deletePersonConfirmation.tr(
+        namedArgs: {'name': person.name},
+      ),
+    );
+
+    if (!shouldDelete || !mounted) return;
+
+    final didDelete = await ref
+        .read(addNewPersonFormProvider.notifier)
+        .delete(person);
+
+    if (didDelete && mounted) {
       context.pop();
     }
   }
@@ -78,7 +126,19 @@ class _AddNewPersonScreenState extends ConsumerState<AddNewPersonScreen> {
       backgroundColor: theme.scaffoldBackgroundColor,
       appBar: AppBar(
         centerTitle: true,
-        title: Text(LocaleKeys.addNewPerson.tr()),
+        title: Text(
+          _isEditing
+              ? LocaleKeys.editPerson.tr()
+              : LocaleKeys.addNewPerson.tr(),
+        ),
+        actions: [
+          if (_isEditing)
+            IconButton(
+              onPressed: formState.isSaving ? null : _handleDelete,
+              icon: const Icon(Icons.delete_outline_rounded),
+              tooltip: LocaleKeys.delete.tr(),
+            ),
+        ],
       ),
       bottomNavigationBar: SafeArea(
         top: false,
@@ -108,6 +168,8 @@ class _AddNewPersonScreenState extends ConsumerState<AddNewPersonScreen> {
             label: Text(
               formState.isSaving
                   ? LocaleKeys.saving.tr()
+                  : _isEditing
+                  ? LocaleKeys.updatePerson.tr()
                   : LocaleKeys.save.tr(),
             ),
           ),
@@ -234,108 +296,111 @@ class _AddNewPersonScreenState extends ConsumerState<AddNewPersonScreen> {
                       prefixIconData: Icons.location_on_outlined,
                       textInputAction: TextInputAction.next,
                     ),
-                    SizedBox(height: sizeConstants.spacingMedium),
-                    Container(
-                      padding: EdgeInsets.all(sizeConstants.spacingMedium),
-                      decoration: BoxDecoration(
-                        color: theme.cardColor,
-                        borderRadius: BorderRadius.circular(
-                          sizeConstants.radiusMedium,
+                    if (!_isEditing) ...[
+                      SizedBox(height: sizeConstants.spacingMedium),
+                      Container(
+                        padding: EdgeInsets.all(sizeConstants.spacingMedium),
+                        decoration: BoxDecoration(
+                          color: theme.cardColor,
+                          borderRadius: BorderRadius.circular(
+                            sizeConstants.radiusMedium,
+                          ),
+                          border: Border.all(color: theme.dividerColor),
                         ),
-                        border: Border.all(color: theme.dividerColor),
-                      ),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Row(
-                            children: [
-                              Icon(
-                                Icons.account_balance_wallet_outlined,
-                                size: sizeConstants.iconMedium,
-                                color: colors.primary,
-                              ),
-                              SizedBox(width: sizeConstants.spacingXSmall),
-                              Text(
-                                LocaleKeys.openingBalance.tr(),
-                                style: theme.textTheme.titleSmall?.copyWith(
-                                  fontWeight: FontWeight.w700,
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.account_balance_wallet_outlined,
+                                  size: sizeConstants.iconMedium,
+                                  color: colors.primary,
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: sizeConstants.spacingMedium),
-                          CustomTextField(
-                            controller: _balanceController,
-                            label: LocaleKeys.balance.tr(),
-                            hintText: LocaleKeys.balance.tr(),
-                            prefixIconData: Icons.attach_money,
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
+                                SizedBox(width: sizeConstants.spacingXSmall),
+                                Text(
+                                  LocaleKeys.openingBalance.tr(),
+                                  style: theme.textTheme.titleSmall?.copyWith(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                              ],
                             ),
-                            textInputAction: TextInputAction.done,
-                            inputFormatters: [
-                              FilteringTextInputFormatter.allow(
-                                RegExp(r'^\d*\.?\d{0,2}'),
-                              ),
-                            ],
-                            validator: (value) {
-                              if (value == null || value.trim().isEmpty) {
-                                return null;
-                              }
-                              return double.tryParse(value.trim()) == null
-                                  ? LocaleKeys.invalidNumber.tr()
-                                  : null;
-                            },
-                          ),
-                          SizedBox(height: sizeConstants.spacingSmall),
-                          Row(
-                            children: [
-                              Expanded(
-                                child: _buildBalanceDirectionCard(
-                                  context: context,
-                                  title: LocaleKeys.youPay.tr(),
-                                  icon: Icons.arrow_outward,
-                                  reverseIcon: true,
-                                  selected:
-                                      formState.openingBalanceDirection ==
-                                      OpeningBalanceDirection.youPay,
-                                  activeColor: Colors.red,
-                                  onTap: () {
-                                    formNotifier.setOpeningBalanceDirection(
-                                      OpeningBalanceDirection.youPay,
-                                    );
-                                  },
+                            SizedBox(height: sizeConstants.spacingMedium),
+                            CustomTextField(
+                              controller: _balanceController,
+                              label: LocaleKeys.balance.tr(),
+                              hintText: LocaleKeys.balance.tr(),
+                              prefixIconData: Icons.attach_money,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              textInputAction: TextInputAction.done,
+                              inputFormatters: [
+                                FilteringTextInputFormatter.allow(
+                                  RegExp(r'^\d*\.?\d{0,2}'),
                                 ),
-                              ),
-                              SizedBox(width: sizeConstants.spacingSmall),
-                              Expanded(
-                                child: _buildBalanceDirectionCard(
-                                  context: context,
-                                  title: LocaleKeys.youReceive.tr(),
-                                  icon: Icons.arrow_outward,
-                                  reverseIcon: false,
-                                  selected:
-                                      formState.openingBalanceDirection ==
-                                      OpeningBalanceDirection.youReceive,
-                                  activeColor: Colors.green,
-                                  onTap: () {
-                                    formNotifier.setOpeningBalanceDirection(
-                                      OpeningBalanceDirection.youReceive,
-                                    );
-                                  },
+                              ],
+                              validator: (value) {
+                                if (value == null || value.trim().isEmpty) {
+                                  return null;
+                                }
+                                return double.tryParse(value.trim()) == null
+                                    ? LocaleKeys.invalidNumber.tr()
+                                    : null;
+                              },
+                            ),
+                            SizedBox(height: sizeConstants.spacingSmall),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: _buildBalanceDirectionCard(
+                                    context: context,
+                                    title: LocaleKeys.youPay.tr(),
+                                    icon: Icons.arrow_outward,
+                                    reverseIcon: true,
+                                    selected:
+                                        formState.openingBalanceDirection ==
+                                        OpeningBalanceDirection.youPay,
+                                    activeColor: Colors.red,
+                                    onTap: () {
+                                      formNotifier.setOpeningBalanceDirection(
+                                        OpeningBalanceDirection.youPay,
+                                      );
+                                    },
+                                  ),
                                 ),
-                              ),
-                            ],
-                          ),
-                          SizedBox(height: sizeConstants.spacingSmall),
-                          _buildBalanceDirectionNotes(
-                            context: context,
-                            selectedDirection:
-                                formState.openingBalanceDirection,
-                          ),
-                        ],
+                                SizedBox(width: sizeConstants.spacingSmall),
+                                Expanded(
+                                  child: _buildBalanceDirectionCard(
+                                    context: context,
+                                    title: LocaleKeys.youReceive.tr(),
+                                    icon: Icons.arrow_outward,
+                                    reverseIcon: false,
+                                    selected:
+                                        formState.openingBalanceDirection ==
+                                        OpeningBalanceDirection.youReceive,
+                                    activeColor: Colors.green,
+                                    onTap: () {
+                                      formNotifier.setOpeningBalanceDirection(
+                                        OpeningBalanceDirection.youReceive,
+                                      );
+                                    },
+                                  ),
+                                ),
+                              ],
+                            ),
+                            SizedBox(height: sizeConstants.spacingSmall),
+                            _buildBalanceDirectionNotes(
+                              context: context,
+                              selectedDirection:
+                                  formState.openingBalanceDirection,
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
+                    ],
                     SizedBox(height: sizeConstants.spacingLarge),
                   ],
                 ),

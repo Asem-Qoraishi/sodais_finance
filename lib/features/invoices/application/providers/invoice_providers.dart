@@ -19,6 +19,13 @@ final invoiceListProvider = FutureProvider((ref) async {
   return dao.getAllInvoices();
 });
 
+final invoiceSummaryListProvider = FutureProvider<List<InvoiceSummary>>((
+  ref,
+) async {
+  final dao = ref.watch(invoiceDaoProvider);
+  return dao.getInvoiceSummaries();
+});
+
 final invoiceItemsProvider = FutureProvider.family((ref, int invoiceId) async {
   final dao = ref.watch(invoiceDaoProvider);
   return dao.getItemsForInvoice(invoiceId);

@@ -1924,6 +1924,18 @@ class $InvoiceTableTable extends InvoiceTable
     type: DriftSqlType.double,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _amountPaidMeta = const VerificationMeta(
+    'amountPaid',
+  );
+  @override
+  late final GeneratedColumn<double> amountPaid = GeneratedColumn<double>(
+    'amount_paid',
+    aliasedName,
+    false,
+    type: DriftSqlType.double,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0.0),
+  );
   static const VerificationMeta _statusMeta = const VerificationMeta('status');
   @override
   late final GeneratedColumn<String> status = GeneratedColumn<String>(
@@ -1969,6 +1981,7 @@ class $InvoiceTableTable extends InvoiceTable
     discount,
     tax,
     finalAmount,
+    amountPaid,
     status,
     createdAt,
     updatedAt,
@@ -2063,6 +2076,12 @@ class $InvoiceTableTable extends InvoiceTable
     } else if (isInserting) {
       context.missing(_finalAmountMeta);
     }
+    if (data.containsKey('amount_paid')) {
+      context.handle(
+        _amountPaidMeta,
+        amountPaid.isAcceptableOrUnknown(data['amount_paid']!, _amountPaidMeta),
+      );
+    }
     if (data.containsKey('status')) {
       context.handle(
         _statusMeta,
@@ -2134,6 +2153,10 @@ class $InvoiceTableTable extends InvoiceTable
         DriftSqlType.double,
         data['${effectivePrefix}final_amount'],
       )!,
+      amountPaid: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}amount_paid'],
+      )!,
       status: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}status'],
@@ -2167,6 +2190,7 @@ class InvoiceTableData extends DataClass
   final double discount;
   final double tax;
   final double finalAmount;
+  final double amountPaid;
   final String status;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -2181,6 +2205,7 @@ class InvoiceTableData extends DataClass
     required this.discount,
     required this.tax,
     required this.finalAmount,
+    required this.amountPaid,
     required this.status,
     required this.createdAt,
     required this.updatedAt,
@@ -2200,6 +2225,7 @@ class InvoiceTableData extends DataClass
     map['discount'] = Variable<double>(discount);
     map['tax'] = Variable<double>(tax);
     map['final_amount'] = Variable<double>(finalAmount);
+    map['amount_paid'] = Variable<double>(amountPaid);
     map['status'] = Variable<String>(status);
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
@@ -2220,6 +2246,7 @@ class InvoiceTableData extends DataClass
       discount: Value(discount),
       tax: Value(tax),
       finalAmount: Value(finalAmount),
+      amountPaid: Value(amountPaid),
       status: Value(status),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
@@ -2242,6 +2269,7 @@ class InvoiceTableData extends DataClass
       discount: serializer.fromJson<double>(json['discount']),
       tax: serializer.fromJson<double>(json['tax']),
       finalAmount: serializer.fromJson<double>(json['finalAmount']),
+      amountPaid: serializer.fromJson<double>(json['amountPaid']),
       status: serializer.fromJson<String>(json['status']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -2261,6 +2289,7 @@ class InvoiceTableData extends DataClass
       'discount': serializer.toJson<double>(discount),
       'tax': serializer.toJson<double>(tax),
       'finalAmount': serializer.toJson<double>(finalAmount),
+      'amountPaid': serializer.toJson<double>(amountPaid),
       'status': serializer.toJson<String>(status),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -2278,6 +2307,7 @@ class InvoiceTableData extends DataClass
     double? discount,
     double? tax,
     double? finalAmount,
+    double? amountPaid,
     String? status,
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -2292,6 +2322,7 @@ class InvoiceTableData extends DataClass
     discount: discount ?? this.discount,
     tax: tax ?? this.tax,
     finalAmount: finalAmount ?? this.finalAmount,
+    amountPaid: amountPaid ?? this.amountPaid,
     status: status ?? this.status,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -2314,6 +2345,9 @@ class InvoiceTableData extends DataClass
       finalAmount: data.finalAmount.present
           ? data.finalAmount.value
           : this.finalAmount,
+      amountPaid: data.amountPaid.present
+          ? data.amountPaid.value
+          : this.amountPaid,
       status: data.status.present ? data.status.value : this.status,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -2333,6 +2367,7 @@ class InvoiceTableData extends DataClass
           ..write('discount: $discount, ')
           ..write('tax: $tax, ')
           ..write('finalAmount: $finalAmount, ')
+          ..write('amountPaid: $amountPaid, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -2352,6 +2387,7 @@ class InvoiceTableData extends DataClass
     discount,
     tax,
     finalAmount,
+    amountPaid,
     status,
     createdAt,
     updatedAt,
@@ -2370,6 +2406,7 @@ class InvoiceTableData extends DataClass
           other.discount == this.discount &&
           other.tax == this.tax &&
           other.finalAmount == this.finalAmount &&
+          other.amountPaid == this.amountPaid &&
           other.status == this.status &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -2386,6 +2423,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
   final Value<double> discount;
   final Value<double> tax;
   final Value<double> finalAmount;
+  final Value<double> amountPaid;
   final Value<String> status;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -2400,6 +2438,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
     this.discount = const Value.absent(),
     this.tax = const Value.absent(),
     this.finalAmount = const Value.absent(),
+    this.amountPaid = const Value.absent(),
     this.status = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -2415,6 +2454,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
     this.discount = const Value.absent(),
     this.tax = const Value.absent(),
     required double finalAmount,
+    this.amountPaid = const Value.absent(),
     required String status,
     this.createdAt = const Value.absent(),
     required DateTime updatedAt,
@@ -2437,6 +2477,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
     Expression<double>? discount,
     Expression<double>? tax,
     Expression<double>? finalAmount,
+    Expression<double>? amountPaid,
     Expression<String>? status,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -2452,6 +2493,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
       if (discount != null) 'discount': discount,
       if (tax != null) 'tax': tax,
       if (finalAmount != null) 'final_amount': finalAmount,
+      if (amountPaid != null) 'amount_paid': amountPaid,
       if (status != null) 'status': status,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -2469,6 +2511,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
     Value<double>? discount,
     Value<double>? tax,
     Value<double>? finalAmount,
+    Value<double>? amountPaid,
     Value<String>? status,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -2484,6 +2527,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
       discount: discount ?? this.discount,
       tax: tax ?? this.tax,
       finalAmount: finalAmount ?? this.finalAmount,
+      amountPaid: amountPaid ?? this.amountPaid,
       status: status ?? this.status,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -2523,6 +2567,9 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
     if (finalAmount.present) {
       map['final_amount'] = Variable<double>(finalAmount.value);
     }
+    if (amountPaid.present) {
+      map['amount_paid'] = Variable<double>(amountPaid.value);
+    }
     if (status.present) {
       map['status'] = Variable<String>(status.value);
     }
@@ -2548,6 +2595,7 @@ class InvoiceTableCompanion extends UpdateCompanion<InvoiceTableData> {
           ..write('discount: $discount, ')
           ..write('tax: $tax, ')
           ..write('finalAmount: $finalAmount, ')
+          ..write('amountPaid: $amountPaid, ')
           ..write('status: $status, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -6328,6 +6376,7 @@ typedef $$InvoiceTableTableCreateCompanionBuilder =
       Value<double> discount,
       Value<double> tax,
       required double finalAmount,
+      Value<double> amountPaid,
       required String status,
       Value<DateTime> createdAt,
       required DateTime updatedAt,
@@ -6344,6 +6393,7 @@ typedef $$InvoiceTableTableUpdateCompanionBuilder =
       Value<double> discount,
       Value<double> tax,
       Value<double> finalAmount,
+      Value<double> amountPaid,
       Value<String> status,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -6405,6 +6455,11 @@ class $$InvoiceTableTableFilterComposer
 
   ColumnFilters<double> get finalAmount => $composableBuilder(
     column: $table.finalAmount,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6483,6 +6538,11 @@ class $$InvoiceTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<double> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -6544,6 +6604,11 @@ class $$InvoiceTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<double> get amountPaid => $composableBuilder(
+    column: $table.amountPaid,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
 
@@ -6595,6 +6660,7 @@ class $$InvoiceTableTableTableManager
                 Value<double> discount = const Value.absent(),
                 Value<double> tax = const Value.absent(),
                 Value<double> finalAmount = const Value.absent(),
+                Value<double> amountPaid = const Value.absent(),
                 Value<String> status = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -6609,6 +6675,7 @@ class $$InvoiceTableTableTableManager
                 discount: discount,
                 tax: tax,
                 finalAmount: finalAmount,
+                amountPaid: amountPaid,
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -6625,6 +6692,7 @@ class $$InvoiceTableTableTableManager
                 Value<double> discount = const Value.absent(),
                 Value<double> tax = const Value.absent(),
                 required double finalAmount,
+                Value<double> amountPaid = const Value.absent(),
                 required String status,
                 Value<DateTime> createdAt = const Value.absent(),
                 required DateTime updatedAt,
@@ -6639,6 +6707,7 @@ class $$InvoiceTableTableTableManager
                 discount: discount,
                 tax: tax,
                 finalAmount: finalAmount,
+                amountPaid: amountPaid,
                 status: status,
                 createdAt: createdAt,
                 updatedAt: updatedAt,

@@ -30,6 +30,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/delivery.svg
   String get delivery => 'assets/icons/delivery.svg';
 
+  /// File path: assets/icons/invoice.svg
+  String get invoice => 'assets/icons/invoice.svg';
+
   /// File path: assets/icons/payment.svg
   String get payment => 'assets/icons/payment.svg';
 
@@ -59,6 +62,7 @@ class $AssetsIconsGen {
     charts,
     dashboard,
     delivery,
+    invoice,
     payment,
     persons,
     products,

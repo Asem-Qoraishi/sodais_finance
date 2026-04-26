@@ -12,6 +12,7 @@ class InvoiceTable extends Table {
   RealColumn get discount => real().withDefault(const Constant(0.0))();
   RealColumn get tax => real().withDefault(const Constant(0.0))();
   RealColumn get finalAmount => real()();
+  RealColumn get amountPaid => real().withDefault(const Constant(0.0))();
   TextColumn get status =>
       text().withLength(max: 16)(); // paid, unpaid, partial
 

@@ -1,37 +1,98 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sodais_finance/features/app/data/app_database.dart';
 import 'package:sodais_finance/features/invoices/application/providers/invoice_providers.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
+import 'package:sodais_finance/features/transactions/application/providers/transaction_providers.dart';
+import 'package:sodais_finance/features/transactions/domain/transactions_repository.dart';
 
 part 'invoice_form_controller.g.dart';
 
+class InvoiceControllerArgs {
+  const InvoiceControllerArgs({required this.type, this.invoiceId});
+
+  final InvoiceType type;
+  final int? invoiceId;
+
+  @override
+  bool operator ==(Object other) {
+    return other is InvoiceControllerArgs &&
+        other.type == type &&
+        other.invoiceId == invoiceId;
+  }
+
+  @override
+  int get hashCode => Object.hash(type, invoiceId);
+}
+
 @riverpod
 class InvoiceController extends _$InvoiceController {
+  int? _loadedInvoiceId;
+
   @override
-  InvoiceState build(InvoiceType? type) {
-    final resolvedType = type ?? InvoiceType.sale;
+  InvoiceState build(InvoiceControllerArgs args) {
+    _loadedInvoiceId = null;
+    if (args.invoiceId == null) {
+      Future.microtask(_loadNextInvoiceNumber);
+    }
     return _normalize(
       InvoiceState(
-        type: resolvedType,
+        type: args.type,
         date: DateTime.now(),
-        invoiceNumber: _buildInvoiceNumber(resolvedType),
+        invoiceNumber: 'inv-1',
       ),
     );
   }
 
-  String _buildInvoiceNumber(InvoiceType type) {
-    final now = DateTime.now();
-    final prefix = switch (type) {
-      InvoiceType.sale => 'SAL',
-      InvoiceType.purchase => 'PUR',
-      InvoiceType.returned => 'RET',
-    };
+  Future<void> _loadNextInvoiceNumber() async {
+    final nextInvoiceNumber = await ref
+        .read(invoiceDaoProvider)
+        .getNextInvoiceNumber();
+    if (_loadedInvoiceId != null || state.invoiceNumber == nextInvoiceNumber) {
+      return;
+    }
+    _updateState(state.copyWith(invoiceNumber: nextInvoiceNumber));
+  }
 
-    String pad(int value) => value.toString().padLeft(2, '0');
+  InvoiceType _invoiceTypeFromName(String value) {
+    for (final type in InvoiceType.values) {
+      if (type.name == value) return type;
+    }
+    return InvoiceType.sale;
+  }
 
-    return '$prefix-${now.year}${pad(now.month)}${pad(now.day)}-'
-        '${pad(now.hour)}${pad(now.minute)}${pad(now.second)}';
+  PaymentStatus _paymentStatusFromName(String value) {
+    for (final status in PaymentStatus.values) {
+      if (status.name == value) return status;
+    }
+    return PaymentStatus.unpaid;
+  }
+
+  double _taxRateFromStoredValues({
+    required double subtotal,
+    required double taxAmount,
+  }) {
+    if (subtotal <= 0 || taxAmount <= 0) return 0;
+    return (taxAmount / subtotal) * 100;
+  }
+
+  Map<String, int> _editingStockAllowance(List<InvoiceItem> items) {
+    final allowances = <String, int>{};
+
+    for (final item in items) {
+      final productId = item.productId;
+      if (productId == null) continue;
+      allowances.update(
+        productId,
+        (value) => value + item.qty,
+        ifAbsent: () {
+          return item.qty;
+        },
+      );
+    }
+
+    return allowances;
   }
 
   InvoiceState _normalize(InvoiceState nextState) {
@@ -86,7 +147,10 @@ class InvoiceController extends _$InvoiceController {
       var nextQuantity = item.qty < 1 ? 1 : item.qty;
       if (type.tracksStock) {
         final allocatedQuantity = allocatedByProduct[product.id] ?? 0;
-        final remainingStock = product.stock - allocatedQuantity;
+        final remainingStock =
+            product.stock +
+            (state.editingStockAllowanceByProduct[product.id] ?? 0) -
+            allocatedQuantity;
         if (remainingStock < 1) continue;
         if (nextQuantity > remainingStock) {
           nextQuantity = remainingStock;
@@ -108,6 +172,53 @@ class InvoiceController extends _$InvoiceController {
     return nextItems;
   }
 
+  Future<void> loadExistingInvoice(int invoiceId) async {
+    if (_loadedInvoiceId == invoiceId) return;
+
+    final invoiceDetails = await ref
+        .read(invoiceDaoProvider)
+        .getInvoiceDetails(invoiceId);
+    if (invoiceDetails == null) {
+      throw StateError('Invoice $invoiceId was not found.');
+    }
+
+    final invoiceType = _invoiceTypeFromName(invoiceDetails.invoice.type);
+    final items = invoiceDetails.items
+        .map(
+          (entry) => InvoiceItem(
+            id: entry.item.id.toString(),
+            productId: entry.product?.id,
+            name: entry.product?.name ?? '',
+            inventoryId: entry.product?.sku,
+            qty: entry.item.quantity.round(),
+            price: entry.item.unitPrice,
+          ),
+        )
+        .toList(growable: false);
+
+    _loadedInvoiceId = invoiceId;
+    _updateState(
+      InvoiceState(
+        type: invoiceType,
+        contact: invoiceDetails.contact,
+        invoiceNumber: invoiceDetails.invoice.invoiceNumber,
+        date: invoiceDetails.invoice.issueDate,
+        dueDate: invoiceDetails.invoice.dueDate,
+        items: items,
+        editingStockAllowanceByProduct: invoiceType.tracksStock
+            ? _editingStockAllowance(items)
+            : const {},
+        paymentStatus: _paymentStatusFromName(invoiceDetails.invoice.status),
+        amountPaid: invoiceDetails.invoice.amountPaid,
+        taxRate: _taxRateFromStoredValues(
+          subtotal: invoiceDetails.invoice.totalAmount,
+          taxAmount: invoiceDetails.invoice.tax,
+        ),
+        discount: invoiceDetails.invoice.discount,
+      ),
+    );
+  }
+
   void updateInvoiceNumber(String number) {
     final trimmedNumber = number.trim();
     if (trimmedNumber.isEmpty) return;
@@ -121,7 +232,6 @@ class InvoiceController extends _$InvoiceController {
         type: type,
         contact: null,
         items: _itemsForType(type, state.items),
-        invoiceNumber: _buildInvoiceNumber(type),
       ),
     );
   }
@@ -294,22 +404,84 @@ class InvoiceController extends _$InvoiceController {
         .toList(growable: false);
 
     final invoiceDao = ref.read(invoiceDaoProvider);
+    final database = ref.read(appDatabaseProvider);
+    final syncInvoiceLedger = ref.read(syncInvoiceLedgerUseCaseProvider);
 
-    await invoiceDao.saveInvoice(
-      invoiceNumber: state.invoiceNumber,
-      contactId: contactId,
-      type: state.type.name,
-      issueDate: state.date,
-      dueDate: state.dueDate,
-      totalAmount: state.subtotal,
-      discount: state.discount,
-      tax: state.taxAmount,
-      finalAmount: state.totalAmount,
-      status: state.paymentStatus.name,
-      items: items,
-    );
+    await database.transaction(() async {
+      final invoiceId =
+          _loadedInvoiceId ??
+          await invoiceDao.saveInvoice(
+            invoiceNumber: state.invoiceNumber,
+            contactId: contactId,
+            type: state.type.name,
+            issueDate: state.date,
+            dueDate: state.dueDate,
+            totalAmount: state.subtotal,
+            discount: state.discount,
+            tax: state.taxAmount,
+            finalAmount: state.totalAmount,
+            amountPaid: state.amountPaid,
+            status: state.paymentStatus.name,
+            items: items,
+          );
+
+      if (_loadedInvoiceId != null) {
+        await invoiceDao.updateInvoice(
+          invoiceId: invoiceId,
+          invoiceNumber: state.invoiceNumber,
+          contactId: contactId,
+          type: state.type.name,
+          issueDate: state.date,
+          dueDate: state.dueDate,
+          totalAmount: state.subtotal,
+          discount: state.discount,
+          tax: state.taxAmount,
+          finalAmount: state.totalAmount,
+          amountPaid: state.amountPaid,
+          status: state.paymentStatus.name,
+          items: items,
+        );
+      }
+
+      await syncInvoiceLedger(
+        InvoiceLedgerSyncRequest(
+          invoiceId: invoiceId,
+          invoiceNumber: state.invoiceNumber,
+          contactId: contactId,
+          invoiceType: state.type.name,
+          issueDate: state.date,
+          finalAmount: state.totalAmount,
+          amountPaid: state.amountPaid,
+          status: state.paymentStatus.name,
+        ),
+      );
+
+      _loadedInvoiceId ??= invoiceId;
+    });
 
     ref.invalidate(invoiceListProvider);
+    ref.invalidate(invoiceSummaryListProvider);
+    ref.invalidate(invoiceProductsProvider);
+  }
+
+  Future<void> deleteInvoice() async {
+    final invoiceId = _loadedInvoiceId;
+    if (invoiceId == null) {
+      throw StateError('Invoice is not loaded.');
+    }
+
+    final database = ref.read(appDatabaseProvider);
+    final deleteInvoiceLedgerEntries = ref.read(
+      deleteInvoiceLedgerEntriesUseCaseProvider,
+    );
+
+    await database.transaction(() async {
+      await ref.read(invoiceDaoProvider).deleteInvoice(invoiceId);
+      await deleteInvoiceLedgerEntries(invoiceId);
+    });
+
+    ref.invalidate(invoiceListProvider);
+    ref.invalidate(invoiceSummaryListProvider);
     ref.invalidate(invoiceProductsProvider);
   }
 }

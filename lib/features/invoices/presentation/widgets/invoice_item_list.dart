@@ -166,10 +166,6 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
     final selectedProduct = _selectedProduct();
     final selectedProductId = selectedProduct?.id;
     final theme = Theme.of(context);
-    final labeledFieldTopOffset =
-        (theme.inputDecorationTheme.labelStyle?.fontSize ??
-            sizeConstants.fontSmall) +
-        sizeConstants.spacingXXSmall;
     final compactFieldPadding = EdgeInsets.symmetric(
       horizontal: sizeConstants.spacingSmall,
       vertical: sizeConstants.spacingSmall,
