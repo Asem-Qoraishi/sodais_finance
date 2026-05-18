@@ -1,5 +1,7 @@
+import 'package:easy_localization/easy_localization.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sodais_finance/features/app/data/app_database.dart';
+import 'package:sodais_finance/core/localization/locale_keys.g.dart';
 import 'package:sodais_finance/features/invoices/application/providers/invoice_providers.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
@@ -37,11 +39,7 @@ class InvoiceController extends _$InvoiceController {
       Future.microtask(_loadNextInvoiceNumber);
     }
     return _normalize(
-      InvoiceState(
-        type: args.type,
-        date: DateTime.now(),
-        invoiceNumber: 'inv-1',
-      ),
+      InvoiceState(type: args.type, date: DateTime.now(), invoiceNumber: '1'),
     );
   }
 
@@ -60,13 +58,6 @@ class InvoiceController extends _$InvoiceController {
       if (type.name == value) return type;
     }
     return InvoiceType.sale;
-  }
-
-  PaymentStatus _paymentStatusFromName(String value) {
-    for (final status in PaymentStatus.values) {
-      if (status.name == value) return status;
-    }
-    return PaymentStatus.unpaid;
   }
 
   double _taxRateFromStoredValues({
@@ -96,19 +87,20 @@ class InvoiceController extends _$InvoiceController {
   }
 
   InvoiceState _normalize(InvoiceState nextState) {
-    final normalizedState = nextState.copyWith(
+    final normalizedPayments = nextState.payments
+        .map(
+          (payment) => payment.copyWith(
+            amount: payment.amount.isNegative ? 0 : payment.amount,
+          ),
+        )
+        .where((payment) => payment.amount > 0)
+        .toList(growable: false);
+
+    return nextState.copyWith(
+      payments: normalizedPayments,
       discount: nextState.discount.isNegative ? 0 : nextState.discount,
       taxRate: nextState.taxRate.isNegative ? 0 : nextState.taxRate,
     );
-    final total = normalizedState.totalAmount;
-    final normalizedAmountPaid = switch (normalizedState.paymentStatus) {
-      PaymentStatus.paid => total,
-      PaymentStatus.unpaid => 0.0,
-      PaymentStatus.partialPaid =>
-        normalizedState.amountPaid.clamp(0.0, total).toDouble(),
-    };
-
-    return normalizedState.copyWith(amountPaid: normalizedAmountPaid);
   }
 
   void _updateState(InvoiceState nextState) {
@@ -116,6 +108,9 @@ class InvoiceController extends _$InvoiceController {
   }
 
   String _newItemId() => DateTime.now().microsecondsSinceEpoch.toString();
+
+  String _newPaymentId() =>
+      'payment-${DateTime.now().microsecondsSinceEpoch.toString()}';
 
   List<Product> _products() {
     return ref.read(invoiceProductsProvider).asData?.value ?? const [];
@@ -195,6 +190,9 @@ class InvoiceController extends _$InvoiceController {
           ),
         )
         .toList(growable: false);
+    final payments = await ref
+        .read(transactionsRepositoryProvider)
+        .getInvoicePayments(invoiceId);
 
     _loadedInvoiceId = invoiceId;
     _updateState(
@@ -208,8 +206,15 @@ class InvoiceController extends _$InvoiceController {
         editingStockAllowanceByProduct: invoiceType.tracksStock
             ? _editingStockAllowance(items)
             : const {},
-        paymentStatus: _paymentStatusFromName(invoiceDetails.invoice.status),
-        amountPaid: invoiceDetails.invoice.amountPaid,
+        payments: payments
+            .map(
+              (payment) => InvoicePaymentDraft(
+                id: payment.id.toString(),
+                amount: payment.amount,
+                recordedAt: payment.recordedAt,
+              ),
+            )
+            .toList(growable: false),
         taxRate: _taxRateFromStoredValues(
           subtotal: invoiceDetails.invoice.totalAmount,
           taxAmount: invoiceDetails.invoice.tax,
@@ -242,14 +247,6 @@ class InvoiceController extends _$InvoiceController {
   void updateDate(DateTime date) => _updateState(state.copyWith(date: date));
   void updateDueDate(DateTime? date) =>
       _updateState(state.copyWith(dueDate: date));
-
-  void updatePaymentStatus(PaymentStatus status) {
-    if (status == state.paymentStatus) return;
-    _updateState(state.copyWith(paymentStatus: status));
-  }
-
-  void updateAmountPaid(double amount) =>
-      _updateState(state.copyWith(amountPaid: amount.abs()));
 
   void updateTaxRate(double rate) =>
       _updateState(state.copyWith(taxRate: rate.abs()));
@@ -378,6 +375,51 @@ class InvoiceController extends _$InvoiceController {
     );
   }
 
+  void addPayment({required double amount, DateTime? recordedAt}) {
+    _updateState(
+      state.copyWith(
+        payments: [
+          ...state.payments,
+          InvoicePaymentDraft(
+            id: _newPaymentId(),
+            amount: amount.abs(),
+            recordedAt: recordedAt ?? DateTime.now(),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void updatePayment({required String id, required double amount}) {
+    _updateState(
+      state.copyWith(
+        payments: state.payments
+            .map(
+              (payment) => payment.id == id
+                  ? payment.copyWith(amount: amount.abs())
+                  : payment,
+            )
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void removePayment(String id) {
+    _updateState(
+      state.copyWith(
+        payments: state.payments
+            .where((payment) => payment.id != id)
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void markFullyPaidNow() {
+    final remaining = state.remainingAmount;
+    if (remaining <= 0) return;
+    addPayment(amount: remaining, recordedAt: DateTime.now());
+  }
+
   Future<void> saveInvoice() async {
     final contactId = int.tryParse(state.contact?.id ?? '');
     if (contactId == null) {
@@ -385,6 +427,9 @@ class InvoiceController extends _$InvoiceController {
     }
     if (state.items.isEmpty) {
       throw StateError('Add at least one item.');
+    }
+    if (state.amountPaid > state.totalAmount) {
+      throw StateError(LocaleKeys.amountExceedsTotal.tr());
     }
 
     final items = state.items
@@ -451,8 +496,15 @@ class InvoiceController extends _$InvoiceController {
           invoiceType: state.type.name,
           issueDate: state.date,
           finalAmount: state.totalAmount,
-          amountPaid: state.amountPaid,
           status: state.paymentStatus.name,
+          payments: state.payments
+              .map(
+                (payment) => InvoiceLedgerPaymentRequest(
+                  amount: payment.amount,
+                  recordedAt: payment.recordedAt,
+                ),
+              )
+              .toList(growable: false),
         ),
       );
 

@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:sodais_finance/features/app/data/app_database.dart';
 import 'package:sodais_finance/features/transactions/application/use_cases/delete_invoice_ledger_entries_use_case.dart';
 import 'package:sodais_finance/features/transactions/application/use_cases/record_opening_balance_use_case.dart';
+import 'package:sodais_finance/features/transactions/application/use_cases/record_manual_transaction_use_case.dart';
 import 'package:sodais_finance/features/transactions/application/use_cases/sync_invoice_ledger_use_case.dart';
 import 'package:sodais_finance/features/transactions/application/use_cases/watch_unified_transaction_feed_use_case.dart';
 import 'package:sodais_finance/features/transactions/data/local/transactions_drift_store.dart';
@@ -39,6 +40,13 @@ final deleteInvoiceLedgerEntriesUseCaseProvider =
 final recordOpeningBalanceUseCaseProvider =
     Provider<RecordOpeningBalanceUseCase>((ref) {
       return RecordOpeningBalanceUseCase(
+        ref.watch(transactionsRepositoryProvider),
+      );
+    });
+
+final recordManualTransactionUseCaseProvider =
+    Provider<RecordManualTransactionUseCase>((ref) {
+      return RecordManualTransactionUseCase(
         ref.watch(transactionsRepositoryProvider),
       );
     });

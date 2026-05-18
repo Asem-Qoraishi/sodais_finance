@@ -10,6 +10,7 @@ class TransactionFeedEntry {
     required this.referenceType,
     required this.referenceId,
     this.amountPaid,
+    this.dueDate,
     this.status,
     this.invoiceNumber,
     this.contactName,
@@ -21,6 +22,7 @@ class TransactionFeedEntry {
   final DateTime occurredAt;
   final double amount;
   final double? amountPaid;
+  final DateTime? dueDate;
   final String entryType;
   final String referenceType;
   final int referenceId;

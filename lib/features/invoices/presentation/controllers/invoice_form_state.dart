@@ -50,6 +50,30 @@ enum PaymentStatus {
 
 const _invoiceUnset = Object();
 
+class InvoicePaymentDraft {
+  const InvoicePaymentDraft({
+    required this.id,
+    required this.amount,
+    required this.recordedAt,
+  });
+
+  final String id;
+  final double amount;
+  final DateTime recordedAt;
+
+  InvoicePaymentDraft copyWith({
+    String? id,
+    double? amount,
+    DateTime? recordedAt,
+  }) {
+    return InvoicePaymentDraft(
+      id: id ?? this.id,
+      amount: amount ?? this.amount,
+      recordedAt: recordedAt ?? this.recordedAt,
+    );
+  }
+}
+
 class InvoiceItem {
   final String id;
   final String? productId;
@@ -102,9 +126,8 @@ class InvoiceState {
   final DateTime date;
   final DateTime? dueDate;
   final List<InvoiceItem> items;
+  final List<InvoicePaymentDraft> payments;
   final Map<String, int> editingStockAllowanceByProduct;
-  final PaymentStatus paymentStatus;
-  final double amountPaid;
   final double taxRate;
   final double discount;
 
@@ -115,9 +138,8 @@ class InvoiceState {
     required this.date,
     this.dueDate,
     this.items = const [],
+    this.payments = const [],
     this.editingStockAllowanceByProduct = const {},
-    this.paymentStatus = PaymentStatus.paid,
-    this.amountPaid = 0.0,
     this.taxRate = 0.0,
     this.discount = 0.0,
   });
@@ -125,7 +147,14 @@ class InvoiceState {
   double get subtotal => items.fold(0.0, (sum, item) => sum + item.subtotal);
   double get taxAmount => subtotal * (taxRate / 100);
   double get totalAmount => math.max(0.0, (subtotal + taxAmount) - discount);
+  double get amountPaid =>
+      payments.fold(0.0, (sum, payment) => sum + payment.amount);
   double get remainingAmount => math.max(0.0, totalAmount - amountPaid);
+  PaymentStatus get paymentStatus {
+    if (amountPaid <= 0) return PaymentStatus.unpaid;
+    if (remainingAmount <= 0) return PaymentStatus.paid;
+    return PaymentStatus.partialPaid;
+  }
 
   InvoiceState copyWith({
     InvoiceType? type,
@@ -134,9 +163,8 @@ class InvoiceState {
     DateTime? date,
     Object? dueDate = _invoiceUnset,
     List<InvoiceItem>? items,
+    List<InvoicePaymentDraft>? payments,
     Map<String, int>? editingStockAllowanceByProduct,
-    PaymentStatus? paymentStatus,
-    double? amountPaid,
     double? taxRate,
     double? discount,
   }) {
@@ -151,10 +179,9 @@ class InvoiceState {
           ? this.dueDate
           : dueDate as DateTime?,
       items: items ?? this.items,
+      payments: payments ?? this.payments,
       editingStockAllowanceByProduct:
           editingStockAllowanceByProduct ?? this.editingStockAllowanceByProduct,
-      paymentStatus: paymentStatus ?? this.paymentStatus,
-      amountPaid: amountPaid ?? this.amountPaid,
       taxRate: taxRate ?? this.taxRate,
       discount: discount ?? this.discount,
     );

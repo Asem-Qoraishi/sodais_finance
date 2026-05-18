@@ -8,11 +8,11 @@ class RouteNames {
   factory RouteNames() => _instance;
 
   // Main app routes
-  final String dashboard = 'dashboard';
   final String persons = 'persons';
   final String inventory = 'inventory';
-  final String transactions = 'invoices';
+  final String transactions = 'transactions';
   final String finance = 'finance';
+  final String settings = 'settings';
   final String reports = 'reports';
   final String addNewPerson = 'addNewPerson';
   final String editPerson = 'editPerson';

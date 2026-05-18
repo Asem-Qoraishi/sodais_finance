@@ -37,6 +37,7 @@ class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
 
   Stream<List<Product>> watchProducts({
     required String query,
+    required ProductStockFilter stockFilter,
     required ProductsOrderBy orderBy,
     int page = 0,
     int pageSize = productsPageSize,
@@ -78,12 +79,37 @@ class ProductDao extends DatabaseAccessor<AppDatabase> with _$ProductDaoMixin {
       );
     }
 
+    _applyStockFilter(queryBuilder, stockFilter);
     queryBuilder.orderBy(_orderingTerms(orderBy));
     queryBuilder.limit(resolvedPageSize, offset: offset);
 
     return queryBuilder.watch().map(
       (rows) => rows.map(_mapJoinedProduct).toList(growable: false),
     );
+  }
+
+  void _applyStockFilter(
+    JoinedSelectStatement queryBuilder,
+    ProductStockFilter stockFilter,
+  ) {
+    switch (stockFilter) {
+      case ProductStockFilter.all:
+        return;
+      case ProductStockFilter.inStock:
+        queryBuilder.where(
+          productTable.stock.isBiggerThan(productTable.reorderLevel),
+        );
+        return;
+      case ProductStockFilter.lowStock:
+        queryBuilder.where(
+          productTable.stock.isBiggerThanValue(0) &
+              productTable.stock.isSmallerOrEqual(productTable.reorderLevel),
+        );
+        return;
+      case ProductStockFilter.outOfStock:
+        queryBuilder.where(productTable.stock.isSmallerOrEqualValue(0));
+        return;
+    }
   }
 
   List<OrderingTerm> _orderingTerms(ProductsOrderBy orderBy) {

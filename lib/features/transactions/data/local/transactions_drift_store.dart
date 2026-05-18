@@ -33,6 +33,7 @@ class TransactionsDriftStore {
               invoice_table.issue_date AS occurred_at,
               invoice_table.final_amount AS amount,
               invoice_table.amount_paid AS amount_paid,
+              invoice_table.due_date AS due_date,
               invoice_table.type AS entry_type,
               invoice_table.status AS status,
               invoice_table.invoice_number AS invoice_number,
@@ -52,6 +53,7 @@ class TransactionsDriftStore {
               transaction_table.date AS occurred_at,
               transaction_table.amount AS amount,
               NULL AS amount_paid,
+              NULL AS due_date,
               transaction_table.type AS entry_type,
               NULL AS status,
               COALESCE(invoice_table.invoice_number, '') AS invoice_number,
@@ -87,6 +89,7 @@ class TransactionsDriftStore {
                   occurredAt: row.read<DateTime>('occurred_at'),
                   amount: row.read<double>('amount'),
                   amountPaid: row.readNullable<double>('amount_paid'),
+                  dueDate: row.readNullable<DateTime>('due_date'),
                   entryType: row.read<String>('entry_type'),
                   status: row.readNullable<String>('status'),
                   invoiceNumber: row.readNullable<String>('invoice_number'),
@@ -100,24 +103,52 @@ class TransactionsDriftStore {
         );
   }
 
+  Future<List<InvoiceLedgerPaymentRecord>> getInvoicePayments(int invoiceId) {
+    return (_db.select(_db.transactionTable)
+          ..where(
+            (tbl) =>
+                tbl.referenceId.equals(invoiceId) &
+                tbl.referenceType.equals(invoicePaymentReferenceType),
+          )
+          ..orderBy([
+            (tbl) => OrderingTerm.asc(tbl.date),
+            (tbl) => OrderingTerm.asc(tbl.id),
+          ]))
+        .get()
+        .then(
+          (rows) => rows
+              .map(
+                (row) => InvoiceLedgerPaymentRecord(
+                  id: row.id,
+                  amount: row.amount,
+                  recordedAt: row.date,
+                ),
+              )
+              .toList(growable: false),
+        );
+  }
+
   Future<void> syncInvoiceLedger(InvoiceLedgerSyncRequest request) async {
     await _db.transaction(() async {
       final existingEntries = await _linkedInvoiceEntries(request.invoiceId);
+      final paymentEntries = existingEntries
+          .where((entry) => entry.referenceType == invoicePaymentReferenceType)
+          .toList(growable: false);
       final paymentAccountId =
-          _firstWhereOrNull(
-            existingEntries,
-            (entry) => entry.referenceType == invoicePaymentReferenceType,
-          )?.accountId ??
+          _firstWhereOrNull(paymentEntries, (_) => true)?.accountId ??
           await _ensureCashAccountId();
       final ledgerAccountId = await _ensureLedgerAccountId();
 
       await _deleteLinkedEntries(existingEntries);
-
       await _insertPrincipalEntry(request: request, accountId: ledgerAccountId);
-
-      if (request.hasPayment) {
+      for (final payment in request.payments) {
         await _insertPaymentEntry(
-          request: request,
+          invoiceId: request.invoiceId,
+          contactId: request.contactId,
+          invoiceNumber: request.invoiceNumber,
+          invoiceType: request.invoiceType,
+          recordedAt: payment.recordedAt,
+          amount: payment.amount,
           accountId: paymentAccountId,
         );
       }
@@ -157,6 +188,36 @@ class TransactionsDriftStore {
     });
   }
 
+  Future<void> recordManualTransaction(ManualTransactionRequest request) async {
+    if (request.amount <= 0) {
+      throw StateError('Amount must be greater than zero.');
+    }
+
+    await _db.transaction(() async {
+      final accountId = await _ensureCashAccountId();
+      await _db
+          .into(_db.transactionTable)
+          .insert(
+            TransactionTableCompanion.insert(
+              accountId: accountId,
+              contactId: Value(request.contactId),
+              amount: request.amount.abs(),
+              type: request.type,
+              date: request.recordedAt,
+              description: Value(_trimToNull(request.description)),
+              referenceType: manualReferenceType,
+              referenceId: request.contactId,
+            ),
+          );
+
+      await _applyAccountDelta(
+        accountId: accountId,
+        amount: request.amount.abs(),
+        type: request.type,
+      );
+    });
+  }
+
   Future<void> _insertPrincipalEntry({
     required InvoiceLedgerSyncRequest request,
     required int accountId,
@@ -178,28 +239,36 @@ class TransactionsDriftStore {
   }
 
   Future<void> _insertPaymentEntry({
-    required InvoiceLedgerSyncRequest request,
+    required int invoiceId,
+    required int contactId,
+    required String invoiceNumber,
+    required String invoiceType,
+    required DateTime recordedAt,
+    required double amount,
     required int accountId,
   }) async {
+    final normalizedAmount = amount.abs();
+    if (normalizedAmount <= 0) return;
+
     await _db
         .into(_db.transactionTable)
         .insert(
           TransactionTableCompanion.insert(
             accountId: accountId,
-            contactId: Value(request.contactId),
-            amount: request.amountPaid.abs(),
-            type: _paymentTypeFor(request.invoiceType),
-            date: request.issueDate,
-            description: Value('Invoice payment ${request.invoiceNumber}'),
+            contactId: Value(contactId),
+            amount: normalizedAmount,
+            type: _paymentTypeFor(invoiceType),
+            date: recordedAt,
+            description: Value('Invoice payment $invoiceNumber'),
             referenceType: invoicePaymentReferenceType,
-            referenceId: request.invoiceId,
+            referenceId: invoiceId,
           ),
         );
 
     await _applyAccountDelta(
       accountId: accountId,
-      amount: request.amountPaid.abs(),
-      type: _paymentTypeFor(request.invoiceType),
+      amount: normalizedAmount,
+      type: _paymentTypeFor(invoiceType),
     );
   }
 
@@ -215,9 +284,13 @@ class TransactionsDriftStore {
         .get();
   }
 
-  Future<void> _deleteLinkedEntries(List<TransactionTableData> entries) async {
+  Future<void> _deleteEntries(
+    List<TransactionTableData> entries, {
+    bool reverseAccountBalances = false,
+  }) async {
     for (final entry in entries) {
-      if (entry.referenceType == invoicePaymentReferenceType) {
+      if (reverseAccountBalances &&
+          entry.referenceType == invoicePaymentReferenceType) {
         await _applyAccountDelta(
           accountId: entry.accountId,
           amount: entry.amount,
@@ -232,6 +305,10 @@ class TransactionsDriftStore {
     await (_db.delete(
       _db.transactionTable,
     )..where((tbl) => tbl.id.isIn(ids))).go();
+  }
+
+  Future<void> _deleteLinkedEntries(List<TransactionTableData> entries) {
+    return _deleteEntries(entries, reverseAccountBalances: true);
   }
 
   Future<int> _ensureLedgerAccountId() async {
@@ -315,5 +392,11 @@ class TransactionsDriftStore {
       if (test(item)) return item;
     }
     return null;
+  }
+
+  String? _trimToNull(String? value) {
+    final trimmed = value?.trim();
+    if (trimmed == null || trimmed.isEmpty) return null;
+    return trimmed;
   }
 }

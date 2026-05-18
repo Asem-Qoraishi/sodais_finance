@@ -4,6 +4,7 @@ import 'package:sodais_finance/features/products/domain/products_query_options.d
 abstract class ProductRepository {
   Stream<List<Product>> watchProducts({
     required String query,
+    required ProductStockFilter stockFilter,
     required ProductsOrderBy orderBy,
     int page = 0,
     int pageSize = productsPageSize,

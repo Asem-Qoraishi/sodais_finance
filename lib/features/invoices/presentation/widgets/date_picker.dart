@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:persian_datetime_picker/persian_datetime_picker.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/helpers/app_locale_helper.dart';
 import 'package:sodais_finance/core/widgets/text_field/custom_text_field.dart';
 
 class CustomDatePicker extends StatefulWidget {
@@ -12,6 +13,7 @@ class CustomDatePicker extends StatefulWidget {
     this.initialDate,
     this.isOptional = false,
     this.label,
+    this.useJalaliCalendar = false,
   });
 
   final ValueChanged<DateTime?> onPickedDate;
@@ -19,6 +21,7 @@ class CustomDatePicker extends StatefulWidget {
   final DateTime? date;
   final bool isOptional;
   final String? label;
+  final bool useJalaliCalendar;
 
   @override
   State<CustomDatePicker> createState() => _CustomDatePickerState();
@@ -31,13 +34,19 @@ class _CustomDatePickerState extends State<CustomDatePicker> {
   void initState() {
     super.initState();
     _controller = TextEditingController();
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
     _syncText();
   }
 
   @override
   void didUpdateWidget(covariant CustomDatePicker oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.date != widget.date) {
+    if (oldWidget.date != widget.date ||
+        oldWidget.useJalaliCalendar != widget.useJalaliCalendar) {
       _syncText();
     }
   }
@@ -54,8 +63,14 @@ class _CustomDatePickerState extends State<CustomDatePicker> {
   }
 
   void _syncText() {
+    final useJalali =
+        widget.useJalaliCalendar ||
+        !appLocaleHelper.isCurrentLanguageEnglish(context);
+
     final displayText = widget.date == null
         ? ''
+        : !useJalali
+        ? DateFormat('d MMM yyyy').format(widget.date!)
         : _formatDariDate(Jalali.fromDateTime(widget.date!));
 
     if (_controller.text == displayText) return;
@@ -66,6 +81,25 @@ class _CustomDatePickerState extends State<CustomDatePicker> {
   }
 
   Future<void> _openPicker(BuildContext context) async {
+    final useJalali =
+        widget.useJalaliCalendar ||
+        !appLocaleHelper.isCurrentLanguageEnglish(context);
+
+    if (!useJalali) {
+      final selectedDate = widget.date ?? widget.initialDate ?? DateTime.now();
+      final pickedDate = await showDatePicker(
+        context: context,
+        initialDate: selectedDate,
+        firstDate: DateTime.now().subtract(const Duration(days: 360 * 90)),
+        lastDate: DateTime(2050, 12, 31),
+      );
+
+      if (pickedDate != null) {
+        widget.onPickedDate(pickedDate);
+      }
+      return;
+    }
+
     final selectedDate = widget.date ?? widget.initialDate ?? DateTime.now();
     final initialJalali = Jalali.fromDateTime(selectedDate);
 

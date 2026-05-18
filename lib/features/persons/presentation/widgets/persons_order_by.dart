@@ -15,7 +15,7 @@ class PersonsOrderBy extends ConsumerWidget {
     final selectedOrder = ref.watch(personsOrderOptionProvider);
 
     return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      mainAxisSize: MainAxisSize.min,
       children: [
         Text(
           selectedOrder.name,
@@ -24,6 +24,7 @@ class PersonsOrderBy extends ConsumerWidget {
             letterSpacing: 0.8,
           ),
         ),
+        SizedBox(width: sizeConstants.spacingXSmall),
         InkWell(
           borderRadius: BorderRadius.circular(sizeConstants.radiusSmall),
           onTap: () {

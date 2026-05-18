@@ -6,6 +6,7 @@ import 'package:sodais_finance/core/localization/locale_keys.g.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 import 'package:sodais_finance/features/products/presentation/controllers/products_controller.dart';
 import 'package:sodais_finance/features/products/presentation/widgets/inventory_app_bar.dart';
+import 'package:sodais_finance/features/products/presentation/widgets/products_filter_bar.dart';
 import 'package:sodais_finance/features/products/presentation/widgets/products_list.dart';
 import 'package:sodais_finance/features/products/presentation/widgets/products_order_by.dart';
 import 'package:sodais_finance/features/products/presentation/widgets/products_search_field.dart';
@@ -26,6 +27,8 @@ class InventoryScreen extends ConsumerWidget {
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             const InventorySearchField(),
+            SizedBox(height: sizeConstants.spacingSmall),
+            const ProductsFilterBar(),
             SizedBox(height: sizeConstants.spacingSmall),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,

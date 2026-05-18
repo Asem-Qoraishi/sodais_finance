@@ -15,11 +15,13 @@ class ProductRepositoryImpl implements ProductRepository {
   @override
   Stream<List<Product>> watchProducts({
     required String query,
+    required ProductStockFilter stockFilter,
     required ProductsOrderBy orderBy,
     int page = 0,
     int pageSize = productsPageSize,
   }) => _productDao.watchProducts(
     query: query,
+    stockFilter: stockFilter,
     orderBy: orderBy,
     page: page,
     pageSize: pageSize,

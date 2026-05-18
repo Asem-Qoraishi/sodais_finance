@@ -51,6 +51,7 @@ final invoiceProductsProvider = StreamProvider<List<Product>>((ref) {
 
   return repository.watchProducts(
     query: '',
+    stockFilter: ProductStockFilter.all,
     orderBy: ProductsOrderBy.alphabetAsc,
     pageSize: 1000,
   );

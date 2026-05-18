@@ -13,6 +13,11 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
   }
 
   @override
+  Future<List<InvoiceLedgerPaymentRecord>> getInvoicePayments(int invoiceId) {
+    return _store.getInvoicePayments(invoiceId);
+  }
+
+  @override
   Future<void> syncInvoiceLedger(InvoiceLedgerSyncRequest request) {
     return _store.syncInvoiceLedger(request);
   }
@@ -25,5 +30,10 @@ class TransactionsRepositoryImpl implements TransactionsRepository {
   @override
   Future<void> recordOpeningBalance(OpeningBalanceEntryRequest request) {
     return _store.recordOpeningBalance(request);
+  }
+
+  @override
+  Future<void> recordManualTransaction(ManualTransactionRequest request) {
+    return _store.recordManualTransaction(request);
   }
 }

@@ -33,7 +33,18 @@ class PersonsScreen extends ConsumerWidget {
             SizedBox(height: sizeConstants.spacingSmall),
             PersonsSummaryCards(persons: persons),
             SizedBox(height: sizeConstants.spacingSmall),
-            const PersonsOrderBy(),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  LocaleKeys.resultsCount.tr(
+                    namedArgs: {'count': persons.length.toString()},
+                  ),
+                  style: Theme.of(context).textTheme.bodyMedium,
+                ),
+                const PersonsOrderBy(),
+              ],
+            ),
             SizedBox(height: sizeConstants.spacingXSmall),
             Expanded(
               child: personsAsync.when(

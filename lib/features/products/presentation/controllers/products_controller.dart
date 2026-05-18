@@ -44,6 +44,22 @@ final productsOrderOptionProvider =
       ProductsOrderOptionNotifier.new,
     );
 
+class ProductsStockFilterNotifier extends Notifier<ProductStockFilter> {
+  @override
+  ProductStockFilter build() => ProductStockFilter.all;
+
+  void setFilter(ProductStockFilter filter) {
+    if (state == filter) return;
+    state = filter;
+    ref.read(productsPageProvider.notifier).reset();
+  }
+}
+
+final productsStockFilterProvider =
+    NotifierProvider<ProductsStockFilterNotifier, ProductStockFilter>(
+      ProductsStockFilterNotifier.new,
+    );
+
 @riverpod
 class ProductSearchQuery extends _$ProductSearchQuery {
   @override
@@ -62,11 +78,13 @@ class ProductsController extends _$ProductsController {
   Stream<List<Product>> build() {
     final repository = ref.watch(productRepositoryProvider);
     final query = ref.watch(productSearchQueryProvider).trim();
+    final stockFilter = ref.watch(productsStockFilterProvider);
     final orderBy = ref.watch(productsOrderOptionProvider).toQueryOrderBy();
     final page = ref.watch(productsPageProvider);
 
     return repository.watchProducts(
       query: query,
+      stockFilter: stockFilter,
       orderBy: orderBy,
       page: page,
       pageSize: productsPageSize,

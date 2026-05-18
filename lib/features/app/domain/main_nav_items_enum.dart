@@ -4,41 +4,36 @@ import 'package:sodais_finance/core/assets/assets.gen.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
 
 enum MainNavItemsEnum {
-  dashboard,
+  transactions,
   persons,
   inventory,
-  transactions,
-  reports;
+  settings;
 
   String routeName() => switch (this) {
-    MainNavItemsEnum.dashboard => routeNames.dashboard,
+    MainNavItemsEnum.transactions => routeNames.transactions,
     MainNavItemsEnum.inventory => routeNames.inventory,
     MainNavItemsEnum.persons => routeNames.persons,
-    MainNavItemsEnum.transactions => routeNames.transactions,
-    MainNavItemsEnum.reports => routeNames.reports,
+    MainNavItemsEnum.settings => routeNames.settings,
   };
 
   String iconSource() => switch (this) {
-    MainNavItemsEnum.dashboard => Assets.icons.dashboard,
-    MainNavItemsEnum.persons => Assets.icons.persons,
-    MainNavItemsEnum.inventory => Assets.icons.warehouse,
-    MainNavItemsEnum.transactions => Assets.icons.invoice,
-    MainNavItemsEnum.reports => Assets.icons.charts,
+    MainNavItemsEnum.transactions => Assets.icons.transactionOutline,
+    MainNavItemsEnum.persons => Assets.icons.personOutline,
+    MainNavItemsEnum.inventory => Assets.icons.productOutline,
+    MainNavItemsEnum.settings => Assets.icons.settingsOutline,
   };
 
   String activeIconSource() => switch (this) {
-    MainNavItemsEnum.dashboard => Assets.icons.dashboard,
-    MainNavItemsEnum.persons => Assets.icons.persons,
-    MainNavItemsEnum.inventory => Assets.icons.warehouse,
-    MainNavItemsEnum.transactions => Assets.icons.invoice,
-    MainNavItemsEnum.reports => Assets.icons.charts,
+    MainNavItemsEnum.transactions => Assets.icons.transactionFill,
+    MainNavItemsEnum.persons => Assets.icons.personFill,
+    MainNavItemsEnum.inventory => Assets.icons.productFill,
+    MainNavItemsEnum.settings => Assets.icons.settingsFill,
   };
 
   String label() => switch (this) {
-    MainNavItemsEnum.dashboard => LocaleKeys.dashboard.tr(),
+    MainNavItemsEnum.transactions => LocaleKeys.transactions.tr(),
     MainNavItemsEnum.persons => LocaleKeys.persons.tr(),
     MainNavItemsEnum.inventory => LocaleKeys.inventory.tr(),
-    MainNavItemsEnum.transactions => LocaleKeys.transactions.tr(),
-    MainNavItemsEnum.reports => LocaleKeys.reports.tr(),
+    MainNavItemsEnum.settings => LocaleKeys.settings.tr(),
   };
 }

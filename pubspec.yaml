@@ -97,6 +97,9 @@ flutter:
   # list giving the asset and other descriptors for the font. For
   # example:
   fonts:
+    - family: Estedad
+      fonts:
+        - asset: assets/fonts/persian/estedad/Estedad.ttf
     - family: Yekan
       fonts:
         - asset: assets/fonts/persian/yekan/yekan.ttf

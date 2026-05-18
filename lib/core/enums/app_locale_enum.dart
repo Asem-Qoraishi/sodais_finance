@@ -17,7 +17,7 @@ enum AppLocaleEnum {
 
   String get fontFamily => switch (this) {
     AppLocaleEnum.en => 'P22Mackinac',
-    AppLocaleEnum.fa => 'Yekan',
+    AppLocaleEnum.fa => 'Estedad',
     AppLocaleEnum.ps => 'Vazir',
   };
 

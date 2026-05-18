@@ -1,8 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/helpers/app_locale_helper.dart';
 import 'package:sodais_finance/core/widgets/buttons/type_toggle_buttons.dart';
 import 'package:sodais_finance/core/widgets/cards/custom_card.dart';
 import 'package:sodais_finance/core/widgets/dialogs/delete_confirmation_dialog.dart';
@@ -29,7 +31,6 @@ class InvoiceCreateScreen extends ConsumerStatefulWidget {
 
 class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   final _formKey = GlobalKey<FormState>();
-  late final TextEditingController _amountPaidController;
   late final TextEditingController _discountController;
   late final TextEditingController _invoiceNumberController;
   bool _isSubmitting = false;
@@ -44,7 +45,6 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
   @override
   void initState() {
     super.initState();
-    _amountPaidController = TextEditingController(text: '0');
     _discountController = TextEditingController(text: '0');
     _invoiceNumberController = TextEditingController();
 
@@ -56,7 +56,6 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
 
   @override
   void dispose() {
-    _amountPaidController.dispose();
     _discountController.dispose();
     _invoiceNumberController.dispose();
     super.dispose();
@@ -195,6 +194,49 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     }
   }
 
+  Future<void> _openPaymentSheet({
+    required InvoiceState invoiceState,
+    required InvoiceController controller,
+    InvoicePaymentDraft? payment,
+  }) async {
+    final paymentIndex = payment == null
+        ? invoiceState.payments.length + 1
+        : invoiceState.payments.indexWhere((entry) => entry.id == payment.id) +
+              1;
+    final availableBalance =
+        invoiceState.remainingAmount + (payment?.amount ?? 0);
+
+    final result = await showModalBottomSheet<_InvoicePaymentSheetResult>(
+      context: context,
+      isScrollControlled: true,
+      showDragHandle: true,
+      builder: (context) => _InvoicePaymentSheet(
+        paymentIndex: paymentIndex < 1 ? 1 : paymentIndex,
+        totalAmount: invoiceState.totalAmount,
+        remainingAmount: availableBalance,
+        initialAmount: payment?.amount,
+        canDelete: payment != null,
+      ),
+    );
+
+    if (!mounted || result == null) return;
+
+    switch (result.action) {
+      case _InvoicePaymentSheetAction.save:
+        if (payment == null) {
+          controller.addPayment(amount: result.amount!);
+        } else {
+          controller.updatePayment(id: payment.id, amount: result.amount!);
+        }
+        break;
+      case _InvoicePaymentSheetAction.delete:
+        if (payment != null) {
+          controller.removePayment(payment.id);
+        }
+        break;
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final controllerProvider = invoiceControllerProvider(_controllerArgs);
@@ -244,10 +286,6 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     final products = productsAsync.asData?.value ?? const [];
 
     _syncController(_invoiceNumberController, invoiceState.invoiceNumber);
-    _syncController(
-      _amountPaidController,
-      formatInvoiceAmount(invoiceState.amountPaid),
-    );
     _syncController(
       _discountController,
       formatInvoiceAmount(invoiceState.discount),
@@ -412,44 +450,61 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                       child: Column(
                         spacing: sizeConstants.spacingMedium,
                         children: [
-                          TypeToggleButtons(
-                            options: PaymentStatus.values,
-                            selectedOption: invoiceState.paymentStatus,
-                            onApply: invoiceController.updatePaymentStatus,
+                          _InvoicePaymentStatusBanner(
+                            invoiceState: invoiceState,
                           ),
-                          if (invoiceState.paymentStatus !=
-                              PaymentStatus.unpaid)
-                            CustomTextField(
-                              controller: _amountPaidController,
-                              label: LocaleKeys.amountPaid.tr(),
-                              readOnly:
-                                  invoiceState.paymentStatus ==
-                                  PaymentStatus.paid,
-                              keyboardType:
-                                  const TextInputType.numberWithOptions(
-                                    decimal: true,
-                                  ),
-                              onChange: (value) {
-                                if (value.trim().isEmpty) {
-                                  invoiceController.updateAmountPaid(0);
-                                  return;
-                                }
-
-                                final amount = double.tryParse(value);
-                                if (amount == null) return;
-                                invoiceController.updateAmountPaid(amount);
-                              },
-                              validator: (value) {
-                                if (value == null || value.isEmpty) return null;
-                                final amount = double.tryParse(value);
-                                if (amount == null || amount.isNegative) {
-                                  return LocaleKeys.invalidNumber.tr();
-                                }
-                                if (amount > invoiceState.totalAmount) {
-                                  return LocaleKeys.amountExceedsTotal.tr();
-                                }
-                                return null;
-                              },
+                          _InvoicePaymentsList(
+                            payments: invoiceState.payments,
+                            onPaymentTap: (payment) => _openPaymentSheet(
+                              invoiceState: invoiceState,
+                              controller: invoiceController,
+                              payment: payment,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: OutlinedButton.icon(
+                                  onPressed:
+                                      invoiceState.totalAmount <= 0 ||
+                                          invoiceState.remainingAmount <= 0
+                                      ? null
+                                      : () => _openPaymentSheet(
+                                          invoiceState: invoiceState,
+                                          controller: invoiceController,
+                                        ),
+                                  icon: const Icon(Icons.add),
+                                  label: Text(LocaleKeys.addPayment.tr()),
+                                ),
+                              ),
+                              SizedBox(width: sizeConstants.spacingSmall),
+                              Expanded(
+                                child: FilledButton.tonalIcon(
+                                  onPressed:
+                                      invoiceState.totalAmount <= 0 ||
+                                          invoiceState.remainingAmount <= 0
+                                      ? null
+                                      : invoiceController.markFullyPaidNow,
+                                  icon: const Icon(Icons.check_circle_outline),
+                                  label: Text(LocaleKeys.fullPaidNow.tr()),
+                                ),
+                              ),
+                            ],
+                          ),
+                          if (invoiceState.amountPaid >
+                              invoiceState.totalAmount)
+                            Align(
+                              alignment: Alignment.centerLeft,
+                              child: Text(
+                                LocaleKeys.amountExceedsTotal.tr(),
+                                style: Theme.of(context).textTheme.bodySmall
+                                    ?.copyWith(
+                                      color: Theme.of(
+                                        context,
+                                      ).colorScheme.error,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                              ),
                             ),
                         ],
                       ),
@@ -525,4 +580,415 @@ class _InvoiceSection extends StatelessWidget {
       ],
     );
   }
+}
+
+enum _InvoicePaymentSheetAction { save, delete }
+
+class _InvoicePaymentSheetResult {
+  const _InvoicePaymentSheetResult.save(this.amount)
+    : action = _InvoicePaymentSheetAction.save;
+
+  const _InvoicePaymentSheetResult.delete()
+    : action = _InvoicePaymentSheetAction.delete,
+      amount = null;
+
+  final _InvoicePaymentSheetAction action;
+  final double? amount;
+}
+
+class _InvoicePaymentStatusBanner extends StatelessWidget {
+  const _InvoicePaymentStatusBanner({required this.invoiceState});
+
+  final InvoiceState invoiceState;
+
+  @override
+  Widget build(BuildContext context) {
+    final statusColor = _paymentStatusColor(
+      context,
+      invoiceState.paymentStatus,
+    );
+    return Container(
+      width: double.infinity,
+      padding: EdgeInsets.all(sizeConstants.spacingMedium),
+      decoration: BoxDecoration(
+        color: statusColor.withValues(alpha: 0.10),
+        borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
+        border: Border.all(color: statusColor.withValues(alpha: 0.24)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.payments_outlined, color: statusColor),
+              SizedBox(width: sizeConstants.spacingXSmall),
+              Text(
+                invoiceState.paymentStatus.label,
+                style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                  color: statusColor,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: sizeConstants.spacingSmall),
+          Wrap(
+            spacing: sizeConstants.spacingXSmall,
+            runSpacing: sizeConstants.spacingXSmall,
+            children: [
+              _InfoPill(
+                label:
+                    '${LocaleKeys.total.tr()}: ${_formatMoney(invoiceState.totalAmount)}',
+              ),
+              _InfoPill(
+                label:
+                    '${LocaleKeys.amountPaid.tr()}: ${_formatMoney(invoiceState.amountPaid)}',
+              ),
+              _InfoPill(
+                label:
+                    '${LocaleKeys.balance.tr()}: ${_formatMoney(invoiceState.remainingAmount)}',
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoicePaymentsList extends StatelessWidget {
+  const _InvoicePaymentsList({
+    required this.payments,
+    required this.onPaymentTap,
+  });
+
+  final List<InvoicePaymentDraft> payments;
+  final ValueChanged<InvoicePaymentDraft> onPaymentTap;
+
+  @override
+  Widget build(BuildContext context) {
+    if (payments.isEmpty) {
+      return Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(sizeConstants.spacingMedium),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Text(
+          LocaleKeys.noPaymentsYet.tr(),
+          style: Theme.of(
+            context,
+          ).textTheme.bodyMedium?.copyWith(color: Theme.of(context).hintColor),
+        ),
+      );
+    }
+
+    return Column(
+      children: [
+        for (int index = 0; index < payments.length; index++) ...[
+          _InvoicePaymentListTile(
+            payment: payments[index],
+            paymentIndex: index + 1,
+            onTap: () => onPaymentTap(payments[index]),
+          ),
+          if (index != payments.length - 1)
+            SizedBox(height: sizeConstants.spacingSmall),
+        ],
+      ],
+    );
+  }
+}
+
+class _InvoicePaymentListTile extends StatelessWidget {
+  const _InvoicePaymentListTile({
+    required this.payment,
+    required this.paymentIndex,
+    required this.onTap,
+  });
+
+  final InvoicePaymentDraft payment;
+  final int paymentIndex;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
+      onTap: onTap,
+      child: Container(
+        width: double.infinity,
+        padding: EdgeInsets.all(sizeConstants.spacingMedium),
+        decoration: BoxDecoration(
+          color: Theme.of(context).colorScheme.surfaceContainerLowest,
+          borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
+          border: Border.all(color: Theme.of(context).dividerColor),
+        ),
+        child: Row(
+          children: [
+            Container(
+              width: sizeConstants.avatarXSmall,
+              height: sizeConstants.avatarXSmall,
+              decoration: BoxDecoration(
+                color: Theme.of(
+                  context,
+                ).colorScheme.primary.withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(sizeConstants.radiusSmall),
+              ),
+              alignment: Alignment.center,
+              child: Text(
+                '$paymentIndex',
+                style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                  color: Theme.of(context).colorScheme.primary,
+                  fontWeight: FontWeight.w800,
+                ),
+              ),
+            ),
+            SizedBox(width: sizeConstants.spacingSmall),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    '${LocaleKeys.payment.tr()} #$paymentIndex',
+                    style: Theme.of(context).textTheme.titleSmall?.copyWith(
+                      fontWeight: FontWeight.w800,
+                    ),
+                  ),
+                  SizedBox(height: sizeConstants.spacingXXSmall),
+                  Text(
+                    _formatDateTime(context, payment.recordedAt),
+                    style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                      color: Theme.of(context).hintColor,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            SizedBox(width: sizeConstants.spacingSmall),
+            Text(
+              _formatMoney(payment.amount),
+              style: Theme.of(context).textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+                color: Theme.of(context).colorScheme.primary,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _InvoicePaymentSheet extends StatefulWidget {
+  const _InvoicePaymentSheet({
+    required this.paymentIndex,
+    required this.totalAmount,
+    required this.remainingAmount,
+    required this.initialAmount,
+    required this.canDelete,
+  });
+
+  final int paymentIndex;
+  final double totalAmount;
+  final double remainingAmount;
+  final double? initialAmount;
+  final bool canDelete;
+
+  @override
+  State<_InvoicePaymentSheet> createState() => _InvoicePaymentSheetState();
+}
+
+class _InvoicePaymentSheetState extends State<_InvoicePaymentSheet> {
+  late final TextEditingController _amountController;
+  final _formKey = GlobalKey<FormState>();
+
+  @override
+  void initState() {
+    super.initState();
+    _amountController = TextEditingController(
+      text: widget.initialAmount == null
+          ? ''
+          : formatInvoiceAmount(widget.initialAmount!),
+    );
+  }
+
+  @override
+  void dispose() {
+    _amountController.dispose();
+    super.dispose();
+  }
+
+  void _submit() {
+    if (!(_formKey.currentState?.validate() ?? false)) return;
+    final amount = double.tryParse(_amountController.text.trim());
+    if (amount == null) return;
+    Navigator.of(context).pop(_InvoicePaymentSheetResult.save(amount));
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final viewInsets = MediaQuery.viewInsetsOf(context).bottom;
+
+    return SafeArea(
+      child: Padding(
+        padding: EdgeInsets.fromLTRB(
+          sizeConstants.spacingMedium,
+          sizeConstants.spacingSmall,
+          sizeConstants.spacingMedium,
+          sizeConstants.spacingMedium + viewInsets,
+        ),
+        child: Form(
+          key: _formKey,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                '${LocaleKeys.payment.tr()} #${widget.paymentIndex}',
+                style: Theme.of(
+                  context,
+                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
+              ),
+              SizedBox(height: sizeConstants.spacingXSmall),
+              Wrap(
+                spacing: sizeConstants.spacingXSmall,
+                runSpacing: sizeConstants.spacingXSmall,
+                children: [
+                  _InfoPill(
+                    label:
+                        '${LocaleKeys.total.tr()}: ${_formatMoney(widget.totalAmount)}',
+                  ),
+                  _InfoPill(
+                    label:
+                        '${LocaleKeys.balance.tr()}: ${_formatMoney(widget.remainingAmount)}',
+                  ),
+                ],
+              ),
+              SizedBox(height: sizeConstants.spacingMedium),
+              CustomTextField(
+                controller: _amountController,
+                label: LocaleKeys.amount.tr(),
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
+                ),
+                validator: (value) {
+                  if (value == null || value.trim().isEmpty) {
+                    return LocaleKeys.fieldRequired.tr();
+                  }
+                  final amount = double.tryParse(value.trim());
+                  if (amount == null || amount <= 0) {
+                    return LocaleKeys.invalidNumber.tr();
+                  }
+                  if (amount > widget.remainingAmount) {
+                    return LocaleKeys.amountExceedsTotal.tr();
+                  }
+                  return null;
+                },
+              ),
+              SizedBox(height: sizeConstants.spacingMedium),
+              Row(
+                children: [
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: () => Navigator.of(context).pop(),
+                      child: Text(LocaleKeys.cancel.tr()),
+                    ),
+                  ),
+                  SizedBox(width: sizeConstants.spacingSmall),
+                  Expanded(
+                    child: OutlinedButton(
+                      onPressed: widget.canDelete
+                          ? () => Navigator.of(
+                              context,
+                            ).pop(const _InvoicePaymentSheetResult.delete())
+                          : null,
+                      child: Text(LocaleKeys.delete.tr()),
+                    ),
+                  ),
+                  SizedBox(width: sizeConstants.spacingSmall),
+                  Expanded(
+                    child: FilledButton(
+                      onPressed: _submit,
+                      child: Text(
+                        widget.initialAmount == null
+                            ? LocaleKeys.add.tr()
+                            : LocaleKeys.save.tr(),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _InfoPill extends StatelessWidget {
+  const _InfoPill({required this.label});
+
+  final String label;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      padding: EdgeInsets.symmetric(
+        horizontal: sizeConstants.spacingSmall,
+        vertical: sizeConstants.spacingXXSmall,
+      ),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.surfaceContainerHighest,
+        borderRadius: BorderRadius.circular(sizeConstants.radiusMax),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
+      ),
+    );
+  }
+}
+
+Color _paymentStatusColor(BuildContext context, PaymentStatus status) {
+  return switch (status) {
+    PaymentStatus.paid => const Color(0xFF1A9B72),
+    PaymentStatus.unpaid => Theme.of(context).colorScheme.error,
+    PaymentStatus.partialPaid => const Color(0xFFC2822E),
+  };
+}
+
+String _formatMoney(double value) {
+  final fixed = value.abs().toStringAsFixed(2);
+  final parts = fixed.split('.');
+  return 'Af${_withThousandsSeparator(parts[0])}.${parts[1]}';
+}
+
+String _withThousandsSeparator(String value) {
+  final buffer = StringBuffer();
+
+  for (int index = 0; index < value.length; index++) {
+    final remaining = value.length - index;
+    buffer.write(value[index]);
+    if (remaining > 1 && remaining % 3 == 1) {
+      buffer.write(',');
+    }
+  }
+
+  return buffer.toString();
+}
+
+String _formatDateTime(BuildContext context, DateTime date) {
+  if (appLocaleHelper.isCurrentLanguageEnglish(context)) {
+    return DateFormat('d MMM yyyy • hh:mm a').format(date);
+  }
+
+  final jalaliDate = Jalali.fromDateTime(date);
+  final hour = date.hour.toString().padLeft(2, '0');
+  final minute = date.minute.toString().padLeft(2, '0');
+  return '${jalaliDate.day} ${jalaliDate.formatter.mN} ${jalaliDate.year} • $hour:$minute';
 }

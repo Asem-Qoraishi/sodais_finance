@@ -11,6 +11,9 @@
 class FontFamily {
   FontFamily._();
 
+  /// Font family: Estedad
+  static const String estedad = 'Estedad';
+
   /// Font family: P22Mackinac
   static const String p22Mackinac = 'P22Mackinac';
 

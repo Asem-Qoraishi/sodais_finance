@@ -8,6 +8,7 @@ import 'package:sodais_finance/config/theme/app_theme.dart';
 import 'package:sodais_finance/core/enums/app_locale_enum.dart';
 import 'package:sodais_finance/core/localization/codegen_loader.g.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/features/app/presentation/controllers/app_theme_mode_controller.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -31,13 +32,14 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends ConsumerWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final width = MediaQuery.sizeOf(context).width;
     final height = MediaQuery.sizeOf(context).height;
+    final themeMode = ref.watch(appThemeModeProvider);
 
     return ScreenUtilInit(
       designSize: Size(width, height),
@@ -49,7 +51,7 @@ class MyApp extends StatelessWidget {
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme(context),
         darkTheme: AppTheme.darkTheme(context),
-        themeMode: ThemeMode.dark,
+        themeMode: themeMode,
         locale: context.locale,
         supportedLocales: context.supportedLocales,
         localizationsDelegates: [

@@ -41,7 +41,7 @@ final class AddNewPersonFormProvider
   }
 }
 
-String _$addNewPersonFormHash() => r'1f4fc49cad8d1948cdc888b8a9cf936147df101a';
+String _$addNewPersonFormHash() => r'f92a64d85f2d3118e1fe9fb8751375d9ff652e8c';
 
 abstract class _$AddNewPersonForm extends $Notifier<AddNewPersonFormState> {
   AddNewPersonFormState build();

@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sodais_finance/features/app/presentation/main_wrapper.dart';
-import 'package:sodais_finance/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 import 'package:sodais_finance/features/invoices/presentation/screens/invoice_create_screen.dart';
 import 'package:sodais_finance/features/invoices/presentation/screens/invoices_screen.dart';
+import 'package:sodais_finance/features/payments/presentation/payments_screen.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/presentation/add_new_person_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/persons_screen.dart';
@@ -13,6 +13,7 @@ import 'package:sodais_finance/features/products/presentation/add_new_product_sc
 import 'package:sodais_finance/features/products/presentation/inventory_screen.dart';
 import 'package:sodais_finance/features/products/presentation/product_categories_screen.dart';
 import 'package:sodais_finance/features/reports/presentation/reports_screen.dart';
+import 'package:sodais_finance/features/settings/presentation/settings_screen.dart';
 import 'package:sodais_finance/features/transactions/presentation/transactions_screen.dart';
 
 part 'route_names.dart';
@@ -29,8 +30,8 @@ class AppRouter {
   static final _rootNavigatorKey = GlobalKey<NavigatorState>(
     debugLabel: 'rootNavigator',
   );
-  static final _shellNavigatorDashboardKey = GlobalKey<NavigatorState>(
-    debugLabel: 'shellDashboard',
+  static final _shellNavigatorTransactionsKey = GlobalKey<NavigatorState>(
+    debugLabel: 'shellTransactions',
   );
   static final _shellNavigatorPersonsKey = GlobalKey<NavigatorState>(
     debugLabel: 'shellPersons',
@@ -38,16 +39,13 @@ class AppRouter {
   static final _shellNavigatorInventoryKey = GlobalKey<NavigatorState>(
     debugLabel: 'shellInventory',
   );
-  static final _shellNavigatorInvoicesKey = GlobalKey<NavigatorState>(
-    debugLabel: 'shellInvoices',
-  );
   static final _shellNavigatorReportsKey = GlobalKey<NavigatorState>(
     debugLabel: 'shellReports',
   );
 
   final goRouter = GoRouter(
     navigatorKey: _rootNavigatorKey,
-    initialLocation: '/${routeNames.dashboard}',
+    initialLocation: '/${routeNames.transactions}',
     routes: [
       // Build Shell routes
       StatefulShellRoute.indexedStack(
@@ -128,18 +126,32 @@ class AppRouter {
         builder: (context, state) =>
             const InvoiceCreateScreen(type: InvoiceType.purchase),
       ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.addNewPayment}',
+        name: routeNames.addNewPayment,
+        builder: (context, state) =>
+            const PaymentsScreen(entryType: CashEntryType.payment),
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.addNewReceipt}',
+        name: routeNames.addNewReceipt,
+        builder: (context, state) =>
+            const PaymentsScreen(entryType: CashEntryType.receipt),
+      ),
     ],
   );
 
   static List<StatefulShellBranch> _buildShellBranches() {
     return [
       StatefulShellBranch(
-        navigatorKey: _shellNavigatorDashboardKey,
+        navigatorKey: _shellNavigatorTransactionsKey,
         routes: [
           GoRoute(
-            path: "/${routeNames.dashboard}",
-            name: routeNames.dashboard,
-            builder: (context, state) => const DashboardScreen(),
+            path: "/${routeNames.transactions}",
+            name: routeNames.transactions,
+            builder: (context, state) => const TransactionsScreen(),
           ),
         ],
       ),
@@ -171,22 +183,19 @@ class AppRouter {
         ],
       ),
       StatefulShellBranch(
-        navigatorKey: _shellNavigatorInvoicesKey,
-        routes: [
-          GoRoute(
-            path: "/${routeNames.transactions}",
-            name: routeNames.transactions,
-            builder: (context, state) => const TransactionsScreen(),
-          ),
-        ],
-      ),
-      StatefulShellBranch(
         navigatorKey: _shellNavigatorReportsKey,
         routes: [
           GoRoute(
-            path: "/${routeNames.reports}",
-            name: routeNames.reports,
-            builder: (context, state) => const ReportsScreen(),
+            path: "/${routeNames.settings}",
+            name: routeNames.settings,
+            builder: (context, state) => const SettingsScreen(),
+            routes: [
+              GoRoute(
+                path: routeNames.reports,
+                name: routeNames.reports,
+                builder: (context, state) => const ReportsScreen(),
+              ),
+            ],
           ),
         ],
       ),
