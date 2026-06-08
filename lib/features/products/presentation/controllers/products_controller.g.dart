@@ -87,7 +87,7 @@ final class ProductsControllerProvider
 }
 
 String _$productsControllerHash() =>
-    r'a2d55c3ed93890be560d3cee66ac28a52f24584a';
+    r'a97c44baa8a3eeee61d75bf516089b3ed7df4636';
 
 abstract class _$ProductsController extends $StreamNotifier<List<Product>> {
   Stream<List<Product>> build();

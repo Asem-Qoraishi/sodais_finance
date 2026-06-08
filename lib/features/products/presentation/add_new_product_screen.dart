@@ -2,12 +2,13 @@ import 'dart:io';
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:sodais_finance/config/app_router.dart';
+import 'package:sodais_finance/core/assets/assets.gen.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/core/widgets/text_field/custom_text_field.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 import 'package:sodais_finance/features/products/domain/product_category.dart';
@@ -34,6 +35,9 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
   final _taxRateController = TextEditingController();
   final _stockController = TextEditingController();
   final _reorderLevelController = TextEditingController();
+  final _mainUnitController = TextEditingController();
+  final _secondaryUnitController = TextEditingController();
+  final _secondaryRateController = TextEditingController();
   final _locationController = TextEditingController();
   bool _didInitProviderState = false;
 
@@ -52,6 +56,9 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
           .initialize(
             imagePath: widget.editingProduct?.imagePath,
             categoryId: widget.editingProduct?.categoryId,
+            hasSecondaryUnit: widget.editingProduct?.hasSecondaryUnit ?? false,
+            stockUnit:
+                widget.editingProduct?.stockUnit ?? ProductStockUnit.main,
           );
     });
   }
@@ -68,6 +75,11 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
     _taxRateController.text = _decimalValue(product.taxRate);
     _stockController.text = _intValue(product.stock);
     _reorderLevelController.text = _intValue(product.reorderLevel);
+    _mainUnitController.text = product.mainUnitName;
+    _secondaryUnitController.text = product.secondaryUnitName ?? '';
+    _secondaryRateController.text = product.secondaryUnitRate == null
+        ? ''
+        : _decimalValue(product.secondaryUnitRate!);
     _locationController.text = product.location ?? '';
   }
 
@@ -89,6 +101,9 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
     _taxRateController.dispose();
     _stockController.dispose();
     _reorderLevelController.dispose();
+    _mainUnitController.dispose();
+    _secondaryUnitController.dispose();
+    _secondaryRateController.dispose();
     _locationController.dispose();
     super.dispose();
   }
@@ -107,6 +122,9 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
       taxRateText: _taxRateController.text,
       stockText: _stockController.text,
       reorderLevelText: _reorderLevelController.text,
+      mainUnitName: _mainUnitController.text,
+      secondaryUnitName: _secondaryUnitController.text,
+      secondaryUnitRateText: _secondaryRateController.text,
       location: _locationController.text,
     );
 
@@ -264,6 +282,17 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
                       taxRateController: _taxRateController,
                     ),
                     SizedBox(height: sizeConstants.spacingLarge),
+                    _UnitsSection(
+                      mainUnitController: _mainUnitController,
+                      secondaryUnitController: _secondaryUnitController,
+                      secondaryRateController: _secondaryRateController,
+                      hasSecondaryUnit: formState.hasSecondaryUnit,
+                      stockUnit: formState.stockUnit,
+                      isEditMode: _isEditMode,
+                      onSecondaryUnitChanged: formNotifier.setHasSecondaryUnit,
+                      onStockUnitChanged: formNotifier.setStockUnit,
+                    ),
+                    SizedBox(height: sizeConstants.spacingLarge),
                     _SectionHeader(
                       title:
                           '${LocaleKeys.inventorySettings.tr()} (${LocaleKeys.fieldOptional.tr()})',
@@ -271,15 +300,12 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
                     ),
                     SizedBox(height: sizeConstants.spacingSmall),
                     _ResponsiveTwoColumns(
-                      first: CustomTextField(
-                        controller: _stockController,
-                        label: LocaleKeys.initalStockQuantity.tr(),
-                        hintText: LocaleKeys.initalStockHint.tr(),
-                        keyboardType: TextInputType.number,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
-                        textInputAction: TextInputAction.next,
+                      first: _StockQuantityField(
+                        stockController: _stockController,
+                        hasSecondaryUnit: formState.hasSecondaryUnit,
+                        stockUnit: formState.stockUnit,
+                        mainUnitName: _mainUnitController.text,
+                        secondaryUnitName: _secondaryUnitController.text,
                       ),
                       second: CustomTextField(
                         controller: _reorderLevelController,
@@ -288,9 +314,7 @@ class _AddNewProductScreenState extends ConsumerState<AddNewProductScreen> {
                         prefixIconData: Icons.notification_important_outlined,
                         keyboardType: TextInputType.number,
                         textInputAction: TextInputAction.next,
-                        inputFormatters: [
-                          FilteringTextInputFormatter.digitsOnly,
-                        ],
+                        inputFormatters: [AppNumberTextInputFormatter()],
                       ),
                     ),
                     SizedBox(height: sizeConstants.spacingSmall),
@@ -506,8 +530,6 @@ class _PricingTaxSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -522,22 +544,18 @@ class _PricingTaxSection extends StatelessWidget {
           first: CustomTextField(
             controller: purchasePriceController,
             label: LocaleKeys.purchasePrice.tr(),
-            hintText: '0.00',
-            prefixIconData: Icons.attach_money,
+            hintText: '0',
+            prefixIconSource: Assets.icons.money,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
+            inputFormatters: [AppNumberTextInputFormatter(allowDecimal: true)],
           ),
           second: CustomTextField(
             controller: sellingPriceController,
             label: LocaleKeys.sellingPrice.tr(),
-            hintText: '0.00',
-            prefixIconData: Icons.attach_money,
+            hintText: '0',
+            prefixIconSource: Assets.icons.money,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
+            inputFormatters: [AppNumberTextInputFormatter(allowDecimal: true)],
           ),
           third: CustomTextField(
             controller: taxRateController,
@@ -545,12 +563,175 @@ class _PricingTaxSection extends StatelessWidget {
             hintText: LocaleKeys.taxRateHint.tr(),
             prefixIconData: Icons.percent,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            inputFormatters: [
-              FilteringTextInputFormatter.allow(RegExp(r'^\d*\.?\d{0,2}')),
-            ],
+            inputFormatters: [AppNumberTextInputFormatter(allowDecimal: true)],
           ),
         ),
       ],
+    );
+  }
+}
+
+class _UnitsSection extends StatelessWidget {
+  const _UnitsSection({
+    required this.mainUnitController,
+    required this.secondaryUnitController,
+    required this.secondaryRateController,
+    required this.hasSecondaryUnit,
+    required this.stockUnit,
+    required this.isEditMode,
+    required this.onSecondaryUnitChanged,
+    required this.onStockUnitChanged,
+  });
+
+  final TextEditingController mainUnitController;
+  final TextEditingController secondaryUnitController;
+  final TextEditingController secondaryRateController;
+  final bool hasSecondaryUnit;
+  final ProductStockUnit stockUnit;
+  final bool isEditMode;
+  final ValueChanged<bool> onSecondaryUnitChanged;
+  final ValueChanged<ProductStockUnit> onStockUnitChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final mainUnitName = mainUnitController.text.trim();
+    final secondaryUnitName = secondaryUnitController.text.trim();
+    final unitRate = secondaryRateController.text.trim();
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        _SectionHeader(
+          title: LocaleKeys.units.tr(),
+          icon: Icons.straighten_outlined,
+          compact: true,
+        ),
+        SizedBox(height: sizeConstants.spacingSmall),
+        CustomTextField(
+          controller: mainUnitController,
+          label: '${LocaleKeys.mainUnit.tr()} *',
+          hintText: LocaleKeys.mainUnitHint.tr(),
+          prefixIconData: Icons.category_outlined,
+          textInputAction: TextInputAction.next,
+          validator: (value) {
+            if (value == null || value.trim().isEmpty) {
+              return LocaleKeys.fieldRequired.tr();
+            }
+            return null;
+          },
+        ),
+        SizedBox(height: sizeConstants.spacingSmall),
+        CheckboxListTile(
+          contentPadding: EdgeInsets.zero,
+          value: hasSecondaryUnit,
+          onChanged: (value) => onSecondaryUnitChanged(value ?? false),
+          title: Text(LocaleKeys.hasSecondaryUnit.tr()),
+          controlAffinity: ListTileControlAffinity.leading,
+        ),
+        if (hasSecondaryUnit) ...[
+          SizedBox(height: sizeConstants.spacingSmall),
+          _ResponsiveTwoColumns(
+            first: CustomTextField(
+              controller: secondaryUnitController,
+              label: '${LocaleKeys.secondaryUnit.tr()} *',
+              hintText: LocaleKeys.secondaryUnitHint.tr(),
+              textInputAction: TextInputAction.next,
+              validator: (value) {
+                if (!hasSecondaryUnit) return null;
+                if (value == null || value.trim().isEmpty) {
+                  return LocaleKeys.fieldRequired.tr();
+                }
+                return null;
+              },
+            ),
+            second: CustomTextField(
+              controller: secondaryRateController,
+              label: '${LocaleKeys.unitRate.tr()} *',
+              hintText: LocaleKeys.unitRateHint.tr(),
+              readOnly: isEditMode,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              inputFormatters: [
+                AppNumberTextInputFormatter(allowDecimal: true),
+              ],
+              validator: (value) {
+                if (!hasSecondaryUnit) return null;
+                final parsed = AppNumberFormatter.parseDouble(value);
+                if (parsed <= 0) {
+                  return LocaleKeys.invalidNumber.tr();
+                }
+                return null;
+              },
+            ),
+          ),
+          if (mainUnitName.isNotEmpty && secondaryUnitName.isNotEmpty)
+            Padding(
+              padding: EdgeInsets.only(top: sizeConstants.spacingXSmall),
+              child: Text(
+                '1 $secondaryUnitName = ${unitRate.isEmpty ? '...' : unitRate} $mainUnitName',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).hintColor,
+                ),
+              ),
+            ),
+          SizedBox(height: sizeConstants.spacingSmall),
+          DropdownButtonFormField<ProductStockUnit>(
+            initialValue: stockUnit,
+            decoration: InputDecoration(labelText: LocaleKeys.stockUnit.tr()),
+            items: [
+              DropdownMenuItem(
+                value: ProductStockUnit.main,
+                child: Text(LocaleKeys.mainUnit.tr()),
+              ),
+              DropdownMenuItem(
+                value: ProductStockUnit.secondary,
+                child: Text(LocaleKeys.secondaryUnit.tr()),
+              ),
+            ],
+            onChanged: (value) {
+              if (value != null) {
+                onStockUnitChanged(value);
+              }
+            },
+          ),
+        ],
+      ],
+    );
+  }
+}
+
+class _StockQuantityField extends StatelessWidget {
+  const _StockQuantityField({
+    required this.stockController,
+    required this.hasSecondaryUnit,
+    required this.stockUnit,
+    required this.mainUnitName,
+    required this.secondaryUnitName,
+  });
+
+  final TextEditingController stockController;
+  final bool hasSecondaryUnit;
+  final ProductStockUnit stockUnit;
+  final String mainUnitName;
+  final String secondaryUnitName;
+
+  @override
+  Widget build(BuildContext context) {
+    final unitName = hasSecondaryUnit && stockUnit == ProductStockUnit.secondary
+        ? secondaryUnitName.trim()
+        : mainUnitName.trim();
+    final label = unitName.isEmpty
+        ? LocaleKeys.initalStockQuantity.tr()
+        : '${LocaleKeys.initalStockQuantity.tr()} ($unitName)';
+
+    return CustomTextField(
+      controller: stockController,
+      label: label,
+      hintText: LocaleKeys.initalStockHint.tr(),
+      keyboardType: TextInputType.number,
+      inputFormatters: [AppNumberTextInputFormatter()],
+      textInputAction: TextInputAction.next,
     );
   }
 }

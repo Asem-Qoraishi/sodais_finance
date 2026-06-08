@@ -58,7 +58,7 @@ final class InvoiceControllerProvider
   }
 }
 
-String _$invoiceControllerHash() => r'e12693d98202fc78476818faa86606a1346198ab';
+String _$invoiceControllerHash() => r'b70cf5fce617b31d8f4dae20087c4ae24e251023';
 
 final class InvoiceControllerFamily extends $Family
     with

@@ -2,6 +2,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 
 class PersonsSummaryCards extends StatelessWidget {
@@ -18,7 +19,7 @@ class PersonsSummaryCards extends StatelessWidget {
         Expanded(
           child: _SummaryCard(
             title: LocaleKeys.toCollect.tr(),
-            amount: _formatMoney(toCollect),
+            amount: AppNumberFormatter.formatAmount(toCollect),
             icon: Icons.call_received_rounded,
             iconColor: Colors.green.shade700,
             iconBackgroundColor: Colors.green.withValues(alpha: 0.14),
@@ -28,7 +29,7 @@ class PersonsSummaryCards extends StatelessWidget {
         Expanded(
           child: _SummaryCard(
             title: LocaleKeys.toPay.tr(),
-            amount: _formatMoney(toPay),
+            amount: AppNumberFormatter.formatAmount(toPay),
             icon: Icons.call_made_rounded,
             iconColor: Colors.red.shade700,
             iconBackgroundColor: Colors.red.withValues(alpha: 0.14),
@@ -51,26 +52,6 @@ class PersonsSummaryCards extends StatelessWidget {
     }
 
     return (toCollect, toPay);
-  }
-
-  String _formatMoney(double value) {
-    final fixed = value.abs().toStringAsFixed(2);
-    final parts = fixed.split('.');
-    return '\$${_withThousandsSeparator(parts[0])}.${parts[1]}';
-  }
-
-  String _withThousandsSeparator(String value) {
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < value.length; i++) {
-      final remaining = value.length - i;
-      buffer.write(value[i]);
-      if (remaining > 1 && remaining % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-
-    return buffer.toString();
   }
 }
 

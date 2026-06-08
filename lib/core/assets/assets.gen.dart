@@ -33,6 +33,9 @@ class $AssetsIconsGen {
   /// File path: assets/icons/invoice.svg
   String get invoice => 'assets/icons/invoice.svg';
 
+  /// File path: assets/icons/money.svg
+  String get money => 'assets/icons/money.svg';
+
   /// File path: assets/icons/payment.svg
   String get payment => 'assets/icons/payment.svg';
 
@@ -69,18 +72,11 @@ class $AssetsIconsGen {
   /// File path: assets/icons/settings-outline.svg
   String get settingsOutline => 'assets/icons/settings-outline.svg';
 
-  /// File path: assets/icons/the-green-mile-movieland.Y4C8uvQF.af.mp4.part
-  String get theGreenMileMovielandY4C8uvQFAfMp4 =>
-      'assets/icons/the-green-mile-movieland.Y4C8uvQF.af.mp4.part';
-
   /// File path: assets/icons/transaction-fill.svg
   String get transactionFill => 'assets/icons/transaction-fill.svg';
 
   /// File path: assets/icons/transaction-outline.svg
   String get transactionOutline => 'assets/icons/transaction-outline.svg';
-
-  /// File path: assets/icons/warehouse.svg
-  String get warehouse => 'assets/icons/warehouse.svg';
 
   /// List of all assets
   List<String> get values => [
@@ -91,6 +87,7 @@ class $AssetsIconsGen {
     dashboard,
     delivery,
     invoice,
+    money,
     payment,
     personFill,
     personOutline,
@@ -103,10 +100,8 @@ class $AssetsIconsGen {
     sellProducts,
     settingsFill,
     settingsOutline,
-    theGreenMileMovielandY4C8uvQFAfMp4,
     transactionFill,
     transactionOutline,
-    warehouse,
   ];
 }
 

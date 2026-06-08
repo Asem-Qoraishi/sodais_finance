@@ -2,7 +2,7 @@
 
 // ignore_for_file: constant_identifier_names
 
-abstract class LocaleKeys {
+abstract class  LocaleKeys {
   static const appName = 'appName';
   static const version = 'version';
   static const dashboard = 'dashboard';
@@ -108,6 +108,15 @@ abstract class LocaleKeys {
   static const updateProduct = 'updateProduct';
   static const fieldRequired = 'fieldRequired';
   static const fieldOptional = 'fieldOptional';
+  static const units = 'units';
+  static const mainUnit = 'mainUnit';
+  static const mainUnitHint = 'mainUnitHint';
+  static const hasSecondaryUnit = 'hasSecondaryUnit';
+  static const secondaryUnit = 'secondaryUnit';
+  static const secondaryUnitHint = 'secondaryUnitHint';
+  static const unitRate = 'unitRate';
+  static const unitRateHint = 'unitRateHint';
+  static const stockUnit = 'stockUnit';
   static const categories = 'categories';
   static const manageCategories = 'manageCategories';
   static const searchCategories = 'searchCategories';
@@ -243,6 +252,9 @@ abstract class LocaleKeys {
   static const receiptSaved = 'receiptSaved';
   static const fullPaidNow = 'fullPaidNow';
   static const deleteInvoice = 'deleteInvoice';
+  static const deleteProductConfirmation = 'deleteProductConfirmation';
+  static const transactionsList = 'transactionsList';
+  static const showDetails = 'showDetails';
   static const deletePersonConfirmation = 'deletePersonConfirmation';
   static const deleteInvoiceConfirmation = 'deleteInvoiceConfirmation';
   static const noInvoicesFound = 'noInvoicesFound';
@@ -268,4 +280,5 @@ abstract class LocaleKeys {
   static const pashto = 'pashto';
   static const comingSoon = 'comingSoon';
   static const customRangeInvalid = 'customRangeInvalid';
+
 }

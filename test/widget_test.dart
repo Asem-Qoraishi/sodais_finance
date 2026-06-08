@@ -7,8 +7,13 @@ void main() {
     final invoiceState = InvoiceState(
       date: DateTime(2026, 4, 22),
       items: const [InvoiceItem(id: '1', name: 'Product A', qty: 2, price: 50)],
-      paymentStatus: PaymentStatus.partialPaid,
-      amountPaid: 30,
+      payments: [
+        InvoicePaymentDraft(
+          id: 'payment-1',
+          amount: 30,
+          recordedAt: DateTime(2026, 4, 22),
+        ),
+      ],
       discount: 10,
     );
 
@@ -16,6 +21,6 @@ void main() {
     expect(invoiceState.totalAmount, 90);
     expect(invoiceState.remainingAmount, 60);
     expect(formatInvoiceAmount(invoiceState.totalAmount), '90');
-    expect(formatInvoiceAmount(90.5), '90.50');
+    expect(formatInvoiceAmount(90.5), '90.5');
   });
 }

@@ -2,8 +2,10 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:shamsi_date/shamsi_date.dart';
+import 'package:sodais_finance/core/assets/assets.gen.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/core/utils/helpers/app_locale_helper.dart';
 import 'package:sodais_finance/core/widgets/buttons/type_toggle_buttons.dart';
 import 'package:sodais_finance/core/widgets/cards/custom_card.dart';
@@ -14,6 +16,7 @@ import 'package:sodais_finance/features/invoices/presentation/controllers/invoic
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 import 'package:sodais_finance/features/invoices/presentation/widgets/date_picker.dart';
 import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_item_list.dart';
+import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_payment_sheet.dart';
 import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_section_label.dart';
 import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_submit_button.dart';
 import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_total_amount.dart';
@@ -206,30 +209,26 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
     final availableBalance =
         invoiceState.remainingAmount + (payment?.amount ?? 0);
 
-    final result = await showModalBottomSheet<_InvoicePaymentSheetResult>(
+    final result = await showInvoicePaymentSheet(
       context: context,
-      isScrollControlled: true,
-      showDragHandle: true,
-      builder: (context) => _InvoicePaymentSheet(
-        paymentIndex: paymentIndex < 1 ? 1 : paymentIndex,
-        totalAmount: invoiceState.totalAmount,
-        remainingAmount: availableBalance,
-        initialAmount: payment?.amount,
-        canDelete: payment != null,
-      ),
+      paymentIndex: paymentIndex < 1 ? 1 : paymentIndex,
+      totalAmount: invoiceState.totalAmount,
+      remainingAmount: availableBalance,
+      initialAmount: payment?.amount,
+      canDelete: payment != null,
     );
 
     if (!mounted || result == null) return;
 
     switch (result.action) {
-      case _InvoicePaymentSheetAction.save:
+      case InvoicePaymentSheetAction.save:
         if (payment == null) {
           controller.addPayment(amount: result.amount!);
         } else {
           controller.updatePayment(id: payment.id, amount: result.amount!);
         }
         break;
-      case _InvoicePaymentSheetAction.delete:
+      case InvoicePaymentSheetAction.delete:
         if (payment != null) {
           controller.removePayment(payment.id);
         }
@@ -297,6 +296,12 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
         persons.any((person) => person.id == invoiceState.contact?.id)
         ? invoiceState.contact?.id
         : null;
+    final invoiceTypeOptions =
+        _isEditing && invoiceState.type == InvoiceType.returned
+        ? InvoiceType.values
+        : InvoiceType.values
+              .where((type) => type != InvoiceType.returned)
+              .toList(growable: false);
 
     return Scaffold(
       appBar: AppBar(
@@ -358,7 +363,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     TypeToggleButtons(
-                      options: InvoiceType.values,
+                      options: invoiceTypeOptions,
                       selectedOption: invoiceState.type,
                       onApply: invoiceController.updateType,
                     ),
@@ -442,6 +447,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                         onItemQuantityChanged:
                             invoiceController.updateItemQuantity,
                         onItemPriceChanged: invoiceController.updateItemPrice,
+                        onItemUnitChanged: invoiceController.updateItemUnit,
                       ),
                     ),
                     _InvoiceSection(
@@ -450,9 +456,6 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                       child: Column(
                         spacing: sizeConstants.spacingMedium,
                         children: [
-                          _InvoicePaymentStatusBanner(
-                            invoiceState: invoiceState,
-                          ),
                           _InvoicePaymentsList(
                             payments: invoiceState.payments,
                             onPaymentTap: (payment) => _openPaymentSheet(
@@ -518,6 +521,7 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                           CustomTextField(
                             controller: _discountController,
                             label: LocaleKeys.discount.tr(),
+                            prefixIconSource: Assets.icons.money,
                             keyboardType: const TextInputType.numberWithOptions(
                               decimal: true,
                             ),
@@ -527,8 +531,9 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                                 return;
                               }
 
-                              final discount = double.tryParse(value);
-                              if (discount == null) return;
+                              final discount = AppNumberFormatter.parseDouble(
+                                value,
+                              );
                               invoiceController.updateDiscount(discount);
                             },
                             validator: (value) {
@@ -536,8 +541,10 @@ class _InvoiceCreateScreenState extends ConsumerState<InvoiceCreateScreen> {
                                 return null;
                               }
 
-                              final parsed = double.tryParse(value);
-                              if (parsed == null || parsed.isNegative) {
+                              final parsed = AppNumberFormatter.parseDouble(
+                                value,
+                              );
+                              if (parsed.isNegative) {
                                 return LocaleKeys.invalidNumber.tr();
                               }
                               return null;
@@ -578,80 +585,6 @@ class _InvoiceSection extends StatelessWidget {
         InvoiceSectionLabel(text: title, sectionNumber: sectionNumber),
         CustomCard(child: child),
       ],
-    );
-  }
-}
-
-enum _InvoicePaymentSheetAction { save, delete }
-
-class _InvoicePaymentSheetResult {
-  const _InvoicePaymentSheetResult.save(this.amount)
-    : action = _InvoicePaymentSheetAction.save;
-
-  const _InvoicePaymentSheetResult.delete()
-    : action = _InvoicePaymentSheetAction.delete,
-      amount = null;
-
-  final _InvoicePaymentSheetAction action;
-  final double? amount;
-}
-
-class _InvoicePaymentStatusBanner extends StatelessWidget {
-  const _InvoicePaymentStatusBanner({required this.invoiceState});
-
-  final InvoiceState invoiceState;
-
-  @override
-  Widget build(BuildContext context) {
-    final statusColor = _paymentStatusColor(
-      context,
-      invoiceState.paymentStatus,
-    );
-    return Container(
-      width: double.infinity,
-      padding: EdgeInsets.all(sizeConstants.spacingMedium),
-      decoration: BoxDecoration(
-        color: statusColor.withValues(alpha: 0.10),
-        borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
-        border: Border.all(color: statusColor.withValues(alpha: 0.24)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(Icons.payments_outlined, color: statusColor),
-              SizedBox(width: sizeConstants.spacingXSmall),
-              Text(
-                invoiceState.paymentStatus.label,
-                style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  color: statusColor,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ],
-          ),
-          SizedBox(height: sizeConstants.spacingSmall),
-          Wrap(
-            spacing: sizeConstants.spacingXSmall,
-            runSpacing: sizeConstants.spacingXSmall,
-            children: [
-              _InfoPill(
-                label:
-                    '${LocaleKeys.total.tr()}: ${_formatMoney(invoiceState.totalAmount)}',
-              ),
-              _InfoPill(
-                label:
-                    '${LocaleKeys.amountPaid.tr()}: ${_formatMoney(invoiceState.amountPaid)}',
-              ),
-              _InfoPill(
-                label:
-                    '${LocaleKeys.balance.tr()}: ${_formatMoney(invoiceState.remainingAmount)}',
-              ),
-            ],
-          ),
-        ],
-      ),
     );
   }
 }
@@ -781,205 +714,8 @@ class _InvoicePaymentListTile extends StatelessWidget {
   }
 }
 
-class _InvoicePaymentSheet extends StatefulWidget {
-  const _InvoicePaymentSheet({
-    required this.paymentIndex,
-    required this.totalAmount,
-    required this.remainingAmount,
-    required this.initialAmount,
-    required this.canDelete,
-  });
-
-  final int paymentIndex;
-  final double totalAmount;
-  final double remainingAmount;
-  final double? initialAmount;
-  final bool canDelete;
-
-  @override
-  State<_InvoicePaymentSheet> createState() => _InvoicePaymentSheetState();
-}
-
-class _InvoicePaymentSheetState extends State<_InvoicePaymentSheet> {
-  late final TextEditingController _amountController;
-  final _formKey = GlobalKey<FormState>();
-
-  @override
-  void initState() {
-    super.initState();
-    _amountController = TextEditingController(
-      text: widget.initialAmount == null
-          ? ''
-          : formatInvoiceAmount(widget.initialAmount!),
-    );
-  }
-
-  @override
-  void dispose() {
-    _amountController.dispose();
-    super.dispose();
-  }
-
-  void _submit() {
-    if (!(_formKey.currentState?.validate() ?? false)) return;
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null) return;
-    Navigator.of(context).pop(_InvoicePaymentSheetResult.save(amount));
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final viewInsets = MediaQuery.viewInsetsOf(context).bottom;
-
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          sizeConstants.spacingMedium,
-          sizeConstants.spacingSmall,
-          sizeConstants.spacingMedium,
-          sizeConstants.spacingMedium + viewInsets,
-        ),
-        child: Form(
-          key: _formKey,
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(
-                '${LocaleKeys.payment.tr()} #${widget.paymentIndex}',
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w900),
-              ),
-              SizedBox(height: sizeConstants.spacingXSmall),
-              Wrap(
-                spacing: sizeConstants.spacingXSmall,
-                runSpacing: sizeConstants.spacingXSmall,
-                children: [
-                  _InfoPill(
-                    label:
-                        '${LocaleKeys.total.tr()}: ${_formatMoney(widget.totalAmount)}',
-                  ),
-                  _InfoPill(
-                    label:
-                        '${LocaleKeys.balance.tr()}: ${_formatMoney(widget.remainingAmount)}',
-                  ),
-                ],
-              ),
-              SizedBox(height: sizeConstants.spacingMedium),
-              CustomTextField(
-                controller: _amountController,
-                label: LocaleKeys.amount.tr(),
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                validator: (value) {
-                  if (value == null || value.trim().isEmpty) {
-                    return LocaleKeys.fieldRequired.tr();
-                  }
-                  final amount = double.tryParse(value.trim());
-                  if (amount == null || amount <= 0) {
-                    return LocaleKeys.invalidNumber.tr();
-                  }
-                  if (amount > widget.remainingAmount) {
-                    return LocaleKeys.amountExceedsTotal.tr();
-                  }
-                  return null;
-                },
-              ),
-              SizedBox(height: sizeConstants.spacingMedium),
-              Row(
-                children: [
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: () => Navigator.of(context).pop(),
-                      child: Text(LocaleKeys.cancel.tr()),
-                    ),
-                  ),
-                  SizedBox(width: sizeConstants.spacingSmall),
-                  Expanded(
-                    child: OutlinedButton(
-                      onPressed: widget.canDelete
-                          ? () => Navigator.of(
-                              context,
-                            ).pop(const _InvoicePaymentSheetResult.delete())
-                          : null,
-                      child: Text(LocaleKeys.delete.tr()),
-                    ),
-                  ),
-                  SizedBox(width: sizeConstants.spacingSmall),
-                  Expanded(
-                    child: FilledButton(
-                      onPressed: _submit,
-                      child: Text(
-                        widget.initialAmount == null
-                            ? LocaleKeys.add.tr()
-                            : LocaleKeys.save.tr(),
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class _InfoPill extends StatelessWidget {
-  const _InfoPill({required this.label});
-
-  final String label;
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      padding: EdgeInsets.symmetric(
-        horizontal: sizeConstants.spacingSmall,
-        vertical: sizeConstants.spacingXXSmall,
-      ),
-      decoration: BoxDecoration(
-        color: Theme.of(context).colorScheme.surfaceContainerHighest,
-        borderRadius: BorderRadius.circular(sizeConstants.radiusMax),
-      ),
-      child: Text(
-        label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelMedium?.copyWith(fontWeight: FontWeight.w700),
-      ),
-    );
-  }
-}
-
-Color _paymentStatusColor(BuildContext context, PaymentStatus status) {
-  return switch (status) {
-    PaymentStatus.paid => const Color(0xFF1A9B72),
-    PaymentStatus.unpaid => Theme.of(context).colorScheme.error,
-    PaymentStatus.partialPaid => const Color(0xFFC2822E),
-  };
-}
-
 String _formatMoney(double value) {
-  final fixed = value.abs().toStringAsFixed(2);
-  final parts = fixed.split('.');
-  return 'Af${_withThousandsSeparator(parts[0])}.${parts[1]}';
-}
-
-String _withThousandsSeparator(String value) {
-  final buffer = StringBuffer();
-
-  for (int index = 0; index < value.length; index++) {
-    final remaining = value.length - index;
-    buffer.write(value[index]);
-    if (remaining > 1 && remaining % 3 == 1) {
-      buffer.write(',');
-    }
-  }
-
-  return buffer.toString();
+  return AppNumberFormatter.formatAmount(value);
 }
 
 String _formatDateTime(BuildContext context, DateTime date) {

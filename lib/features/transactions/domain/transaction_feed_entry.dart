@@ -9,6 +9,7 @@ class TransactionFeedEntry {
     required this.entryType,
     required this.referenceType,
     required this.referenceId,
+    this.contactId,
     this.amountPaid,
     this.dueDate,
     this.status,
@@ -21,6 +22,7 @@ class TransactionFeedEntry {
   final int id;
   final DateTime occurredAt;
   final double amount;
+  final int? contactId;
   final double? amountPaid;
   final DateTime? dueDate;
   final String entryType;

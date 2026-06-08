@@ -1,3 +1,5 @@
+// ignore_for_file: avoid_print
+
 import 'dart:io';
 
 //dart run easy_localization:generate -S "assets/translations" -O "lib/core/localization"

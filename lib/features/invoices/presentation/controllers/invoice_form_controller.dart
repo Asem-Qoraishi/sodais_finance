@@ -1,8 +1,11 @@
+import 'dart:math' as math;
+
 import 'package:easy_localization/easy_localization.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 import 'package:sodais_finance/features/app/data/app_database.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
 import 'package:sodais_finance/features/invoices/application/providers/invoice_providers.dart';
+import 'package:sodais_finance/features/invoices/data/local/dao/invoice_dao.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
@@ -70,15 +73,20 @@ class InvoiceController extends _$InvoiceController {
 
   Map<String, int> _editingStockAllowance(List<InvoiceItem> items) {
     final allowances = <String, int>{};
+    final productsById = {
+      for (final product in _products()) product.id: product,
+    };
 
     for (final item in items) {
       final productId = item.productId;
       if (productId == null) continue;
+      final product = productsById[productId];
+      if (product == null) continue;
       allowances.update(
         productId,
-        (value) => value + item.qty,
+        (value) => value + item.trackedQuantityFor(product),
         ifAbsent: () {
-          return item.qty;
+          return item.trackedQuantityFor(product);
         },
       );
     }
@@ -116,6 +124,48 @@ class InvoiceController extends _$InvoiceController {
     return ref.read(invoiceProductsProvider).asData?.value ?? const [];
   }
 
+  ProductStockUnit _defaultInvoiceUnit(
+    Product product, {
+    ProductStockUnit? currentUnit,
+  }) {
+    if (!product.hasSecondaryUnit) {
+      return ProductStockUnit.main;
+    }
+    if (currentUnit == ProductStockUnit.secondary) {
+      return ProductStockUnit.secondary;
+    }
+    if (product.stockUnit == ProductStockUnit.secondary) {
+      return ProductStockUnit.secondary;
+    }
+    return ProductStockUnit.main;
+  }
+
+  InvoiceItem _invoiceItemFromDetailsEntry(InvoiceDetailsItem entry) {
+    final product = entry.product;
+    final mainQuantity = entry.item.quantity;
+    final rate = product?.secondaryUnitRate ?? 0;
+    final usesSecondary =
+        product?.hasSecondaryUnit == true &&
+        rate > 0 &&
+        isWholeInvoiceQuantity(mainQuantity / rate);
+
+    return InvoiceItem(
+      id: entry.item.id.toString(),
+      productId: product?.id,
+      name: product?.name ?? '',
+      inventoryId: product?.sku,
+      qty: usesSecondary
+          ? math.max(1, (mainQuantity / rate).round())
+          : math.max(1, mainQuantity.round()),
+      secondaryQty: 0,
+      price: entry.item.unitPrice,
+      unit: usesSecondary ? ProductStockUnit.secondary : ProductStockUnit.main,
+      mainUnitName: product?.mainUnitName ?? 'item',
+      secondaryUnitName: product?.secondaryUnitName,
+      secondaryUnitRate: product?.secondaryUnitRate,
+    );
+  }
+
   List<InvoiceItem> _itemsForType(InvoiceType type, List<InvoiceItem> items) {
     final products = _products();
     if (items.isEmpty || products.isEmpty) return items;
@@ -139,7 +189,20 @@ class InvoiceController extends _$InvoiceController {
         continue;
       }
 
-      var nextQuantity = item.qty < 1 ? 1 : item.qty;
+      var nextItem = item.copyWith(
+        productId: product.id,
+        name: product.name,
+        inventoryId: product.sku,
+        price: type.unitPriceFor(product),
+        mainUnitName: product.mainUnitName,
+        secondaryUnitName: product.secondaryUnitName,
+        secondaryUnitRate: product.secondaryUnitRate,
+        unit: _defaultInvoiceUnit(product, currentUnit: item.unit),
+      );
+      nextItem = nextItem.copyWith(
+        qty: math.max(nextItem.qty, 1),
+        secondaryQty: 0,
+      );
       if (type.tracksStock) {
         final allocatedQuantity = allocatedByProduct[product.id] ?? 0;
         final remainingStock =
@@ -147,21 +210,34 @@ class InvoiceController extends _$InvoiceController {
             (state.editingStockAllowanceByProduct[product.id] ?? 0) -
             allocatedQuantity;
         if (remainingStock < 1) continue;
-        if (nextQuantity > remainingStock) {
-          nextQuantity = remainingStock;
+        final rate =
+            product.secondaryUnitRate ?? nextItem.secondaryUnitRate ?? 0;
+        final maxMainQuantity =
+            product.stockUnit == ProductStockUnit.secondary &&
+                product.hasSecondaryUnit &&
+                rate > 0
+            ? remainingStock * rate
+            : remainingStock.toDouble();
+        final unitMultiplier = nextItem.usesSecondaryUnit && rate > 0
+            ? rate
+            : 1.0;
+        final maxQuantity = math.max(
+          (maxMainQuantity / unitMultiplier).floor(),
+          1,
+        );
+        nextItem = nextItem.copyWith(qty: nextItem.qty.clamp(1, maxQuantity));
+        if (nextItem.quantityInMainUnit <= 0) {
+          nextItem = nextItem.copyWith(qty: 1, secondaryQty: 0);
         }
-        allocatedByProduct[product.id] = allocatedQuantity + nextQuantity;
+        allocatedByProduct[product.id] =
+            allocatedQuantity + nextItem.trackedQuantityFor(product);
+      } else {
+        if (nextItem.quantityInMainUnit <= 0) {
+          nextItem = nextItem.copyWith(qty: 1, secondaryQty: 0);
+        }
       }
 
-      nextItems.add(
-        item.copyWith(
-          productId: product.id,
-          name: product.name,
-          inventoryId: product.sku,
-          qty: nextQuantity,
-          price: type.unitPriceFor(product),
-        ),
-      );
+      nextItems.add(nextItem);
     }
 
     return nextItems;
@@ -179,16 +255,7 @@ class InvoiceController extends _$InvoiceController {
 
     final invoiceType = _invoiceTypeFromName(invoiceDetails.invoice.type);
     final items = invoiceDetails.items
-        .map(
-          (entry) => InvoiceItem(
-            id: entry.item.id.toString(),
-            productId: entry.product?.id,
-            name: entry.product?.name ?? '',
-            inventoryId: entry.product?.sku,
-            qty: entry.item.quantity.round(),
-            price: entry.item.unitPrice,
-          ),
-        )
+        .map((entry) => _invoiceItemFromDetailsEntry(entry))
         .toList(growable: false);
     final payments = await ref
         .read(transactionsRepositoryProvider)
@@ -271,6 +338,10 @@ class InvoiceController extends _$InvoiceController {
         inventoryId: product.sku,
         qty: 1,
         price: state.type.unitPriceFor(product),
+        unit: _defaultInvoiceUnit(product),
+        mainUnitName: product.mainUnitName,
+        secondaryUnitName: product.secondaryUnitName,
+        secondaryUnitRate: product.secondaryUnitRate,
       ),
     );
   }
@@ -292,9 +363,54 @@ class InvoiceController extends _$InvoiceController {
                       name: product.name,
                       inventoryId: product.sku,
                       price: state.type.unitPriceFor(product),
+                      unit: _defaultInvoiceUnit(
+                        product,
+                        currentUnit: item.unit,
+                      ),
+                      mainUnitName: product.mainUnitName,
+                      secondaryUnitName: product.secondaryUnitName,
+                      secondaryUnitRate: product.secondaryUnitRate,
+                      secondaryQty: 0,
                     )
                   : item,
             )
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void updateItemUnit(String id, ProductStockUnit unit) {
+    final products = _products();
+
+    _updateState(
+      state.copyWith(
+        items: state.items
+            .map((item) {
+              if (item.id != id) return item;
+
+              final productId = item.productId;
+              if (productId == null) return item;
+              final product = state.findProductById(productId, products);
+              if (product == null) return item;
+
+              final resolvedUnit = item.availableUnits(product).contains(unit)
+                  ? unit
+                  : ProductStockUnit.main;
+              final rate =
+                  product.secondaryUnitRate ?? item.secondaryUnitRate ?? 0;
+              final totalMainQuantity = item.quantityInMainUnit;
+              final nextMainQuantity =
+                  resolvedUnit == ProductStockUnit.secondary && rate > 0
+                  ? math.max(1, (totalMainQuantity / rate).round())
+                  : math.max(1, totalMainQuantity.round());
+              final candidate = item.copyWith(
+                unit: resolvedUnit,
+                qty: nextMainQuantity,
+                secondaryQty: 0,
+              );
+
+              return state.resolvedItemForQuantities(candidate, products);
+            })
             .toList(growable: false),
       ),
     );
@@ -310,18 +426,39 @@ class InvoiceController extends _$InvoiceController {
     }
     if (targetItem == null) return;
 
-    final resolvedQuantity = state.resolvedQuantityForItem(
+    final resolvedItem = state.resolvedItemForQuantities(
       targetItem,
-      quantity,
       _products(),
+      qty: quantity,
     );
     _updateState(
       state.copyWith(
         items: state.items
-            .map(
-              (item) =>
-                  item.id == id ? item.copyWith(qty: resolvedQuantity) : item,
-            )
+            .map((item) => item.id == id ? resolvedItem : item)
+            .toList(growable: false),
+      ),
+    );
+  }
+
+  void updateItemSecondaryQuantity(String id, int quantity) {
+    InvoiceItem? targetItem;
+    for (final item in state.items) {
+      if (item.id == id) {
+        targetItem = item;
+        break;
+      }
+    }
+    if (targetItem == null) return;
+
+    final resolvedItem = state.resolvedItemForQuantities(
+      targetItem,
+      _products(),
+      secondaryQty: quantity,
+    );
+    _updateState(
+      state.copyWith(
+        items: state.items
+            .map((item) => item.id == id ? resolvedItem : item)
             .toList(growable: false),
       ),
     );
@@ -441,7 +578,7 @@ class InvoiceController extends _$InvoiceController {
 
           return (
             productId: productId,
-            quantity: item.qty.toDouble(),
+            quantity: item.quantityInMainUnit,
             unitPrice: item.price,
             totalPrice: item.subtotal,
           );
@@ -451,6 +588,7 @@ class InvoiceController extends _$InvoiceController {
     final invoiceDao = ref.read(invoiceDaoProvider);
     final database = ref.read(appDatabaseProvider);
     final syncInvoiceLedger = ref.read(syncInvoiceLedgerUseCaseProvider);
+    int savedInvoiceId = _loadedInvoiceId ?? 0;
 
     await database.transaction(() async {
       final invoiceId =
@@ -469,6 +607,7 @@ class InvoiceController extends _$InvoiceController {
             status: state.paymentStatus.name,
             items: items,
           );
+      savedInvoiceId = invoiceId;
 
       if (_loadedInvoiceId != null) {
         await invoiceDao.updateInvoice(
@@ -513,7 +652,11 @@ class InvoiceController extends _$InvoiceController {
 
     ref.invalidate(invoiceListProvider);
     ref.invalidate(invoiceSummaryListProvider);
+    ref.invalidate(invoiceItemsProvider(savedInvoiceId));
+    ref.invalidate(invoiceDetailsProvider(savedInvoiceId));
+    ref.invalidate(invoicePaymentRecordsProvider(savedInvoiceId));
     ref.invalidate(invoiceProductsProvider);
+    ref.invalidate(unifiedTransactionFeedProvider);
   }
 
   Future<void> deleteInvoice() async {
@@ -534,6 +677,10 @@ class InvoiceController extends _$InvoiceController {
 
     ref.invalidate(invoiceListProvider);
     ref.invalidate(invoiceSummaryListProvider);
+    ref.invalidate(invoiceItemsProvider(invoiceId));
+    ref.invalidate(invoiceDetailsProvider(invoiceId));
+    ref.invalidate(invoicePaymentRecordsProvider(invoiceId));
     ref.invalidate(invoiceProductsProvider);
+    ref.invalidate(unifiedTransactionFeedProvider);
   }
 }

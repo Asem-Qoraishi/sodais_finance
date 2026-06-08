@@ -2,6 +2,7 @@ import 'dart:math' as math;
 
 import 'package:easy_localization/easy_localization.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 
@@ -49,6 +50,7 @@ enum PaymentStatus {
 }
 
 const _invoiceUnset = Object();
+const _itemEpsilon = 0.000001;
 
 class InvoicePaymentDraft {
   const InvoicePaymentDraft({
@@ -75,37 +77,119 @@ class InvoicePaymentDraft {
 }
 
 class InvoiceItem {
-  final String id;
-  final String? productId;
-  final String name;
-  final String? inventoryId;
-  final int qty;
-  final double price;
-
   const InvoiceItem({
     required this.id,
     this.productId,
     required this.name,
     this.inventoryId,
     required this.qty,
+    this.secondaryQty = 0,
     required this.price,
+    this.unit = ProductStockUnit.main,
+    this.mainUnitName = 'item',
+    this.secondaryUnitName,
+    this.secondaryUnitRate,
   });
 
+  final String id;
+  final String? productId;
+  final String name;
+  final String? inventoryId;
+  final int qty;
+  final int secondaryQty;
+  final double price;
+  final ProductStockUnit unit;
+  final String mainUnitName;
+  final String? secondaryUnitName;
+  final double? secondaryUnitRate;
+
   factory InvoiceItem.empty(String id) {
-    return InvoiceItem(id: id, qty: 1, price: 0, name: '', inventoryId: null);
+    return const InvoiceItem(
+      id: '',
+      qty: 1,
+      price: 0,
+      name: '',
+    ).copyWith(id: id);
   }
 
-  double get subtotal => qty * price;
+  bool get hasSecondaryUnit {
+    final secondaryName = secondaryUnitName?.trim() ?? '';
+    return secondaryName.isNotEmpty && (secondaryUnitRate ?? 0) > 0;
+  }
+
+  bool get usesSecondaryUnit =>
+      unit == ProductStockUnit.secondary && hasSecondaryUnit;
+
+  String get unitName {
+    if (usesSecondaryUnit) {
+      return secondaryUnitName!.trim();
+    }
+    return mainUnitName.trim();
+  }
+
+  double get quantityInMainUnit {
+    if (usesSecondaryUnit) return qty * secondaryUnitRate!;
+    return qty.toDouble();
+  }
+
+  double get subtotal => quantityInMainUnit * price;
+
+  List<ProductStockUnit> availableUnits(Product? product) {
+    final supportsSecondary = product?.hasSecondaryUnit ?? hasSecondaryUnit;
+    if (!supportsSecondary) {
+      return const [ProductStockUnit.main];
+    }
+    return const [ProductStockUnit.main, ProductStockUnit.secondary];
+  }
+
+  int trackedQuantityFor(Product product) {
+    final rate = product.secondaryUnitRate ?? secondaryUnitRate ?? 0;
+    final totalMainQuantity = quantityInMainUnit;
+
+    if (product.stockUnit == ProductStockUnit.secondary &&
+        product.hasSecondaryUnit &&
+        rate > 0) {
+      return math.max((totalMainQuantity / rate).ceil(), 1);
+    }
+
+    return math.max(totalMainQuantity.ceil(), 1);
+  }
+
+  int trackedStepFor(Product product) {
+    final rate = product.secondaryUnitRate ?? secondaryUnitRate ?? 0;
+    if (rate <= 0) return 1;
+
+    if (product.stockUnit == ProductStockUnit.secondary &&
+        product.hasSecondaryUnit) {
+      return usesSecondaryUnit ? 1 : 1;
+    }
+
+    if (usesSecondaryUnit) {
+      return math.max(rate.round(), 1);
+    }
+
+    return 1;
+  }
+
+  int quantityStepFor(Product product) {
+    return 1;
+  }
 
   InvoiceItem copyWith({
+    String? id,
     Object? productId = _invoiceUnset,
     String? name,
     Object? inventoryId = _invoiceUnset,
     int? qty,
+    int? secondaryQty,
     double? price,
+    ProductStockUnit? unit,
+    String? mainUnitName,
+    Object? secondaryUnitName = _invoiceUnset,
+    Object? secondaryUnitRate = _invoiceUnset,
   }) {
     return InvoiceItem(
-      id: id,
+      id: id ?? this.id,
       productId: identical(productId, _invoiceUnset)
           ? this.productId
           : productId as String?,
@@ -114,23 +198,21 @@ class InvoiceItem {
           ? this.inventoryId
           : inventoryId as String?,
       qty: qty ?? this.qty,
+      secondaryQty: secondaryQty ?? this.secondaryQty,
       price: price ?? this.price,
+      unit: unit ?? this.unit,
+      mainUnitName: mainUnitName ?? this.mainUnitName,
+      secondaryUnitName: identical(secondaryUnitName, _invoiceUnset)
+          ? this.secondaryUnitName
+          : secondaryUnitName as String?,
+      secondaryUnitRate: identical(secondaryUnitRate, _invoiceUnset)
+          ? this.secondaryUnitRate
+          : secondaryUnitRate as double?,
     );
   }
 }
 
 class InvoiceState {
-  final InvoiceType type;
-  final Person? contact;
-  final String invoiceNumber;
-  final DateTime date;
-  final DateTime? dueDate;
-  final List<InvoiceItem> items;
-  final List<InvoicePaymentDraft> payments;
-  final Map<String, int> editingStockAllowanceByProduct;
-  final double taxRate;
-  final double discount;
-
   const InvoiceState({
     this.type = InvoiceType.sale,
     this.contact,
@@ -144,12 +226,24 @@ class InvoiceState {
     this.discount = 0.0,
   });
 
+  final InvoiceType type;
+  final Person? contact;
+  final String invoiceNumber;
+  final DateTime date;
+  final DateTime? dueDate;
+  final List<InvoiceItem> items;
+  final List<InvoicePaymentDraft> payments;
+  final Map<String, int> editingStockAllowanceByProduct;
+  final double taxRate;
+  final double discount;
+
   double get subtotal => items.fold(0.0, (sum, item) => sum + item.subtotal);
   double get taxAmount => subtotal * (taxRate / 100);
   double get totalAmount => math.max(0.0, (subtotal + taxAmount) - discount);
   double get amountPaid =>
       payments.fold(0.0, (sum, payment) => sum + payment.amount);
   double get remainingAmount => math.max(0.0, totalAmount - amountPaid);
+
   PaymentStatus get paymentStatus {
     if (amountPaid <= 0) return PaymentStatus.unpaid;
     if (remainingAmount <= 0) return PaymentStatus.paid;
@@ -189,10 +283,11 @@ class InvoiceState {
 }
 
 String formatInvoiceAmount(num value) {
-  if (value == value.roundToDouble()) {
-    return value.toInt().toString();
-  }
-  return value.toStringAsFixed(2);
+  return AppNumberFormatter.formatDecimal(value);
+}
+
+bool isWholeInvoiceQuantity(double value) {
+  return (value - value.roundToDouble()).abs() < _itemEpsilon;
 }
 
 extension InvoiceStateProductX on InvoiceState {
@@ -203,11 +298,13 @@ extension InvoiceStateProductX on InvoiceState {
     return null;
   }
 
-  int allocatedQuantityForProduct(String productId, {String? excludingItemId}) {
+  int allocatedQuantityForProduct(Product product, {String? excludingItemId}) {
     var allocatedQuantity = 0;
     for (final item in items) {
-      if (item.productId != productId || item.id == excludingItemId) continue;
-      allocatedQuantity += item.qty;
+      if (item.productId != product.id || item.id == excludingItemId) {
+        continue;
+      }
+      allocatedQuantity += item.trackedQuantityFor(product);
     }
     return allocatedQuantity;
   }
@@ -218,10 +315,7 @@ extension InvoiceStateProductX on InvoiceState {
     final remainingStock =
         product.stock +
         (editingStockAllowanceByProduct[product.id] ?? 0) -
-        allocatedQuantityForProduct(
-          product.id,
-          excludingItemId: excludingItemId,
-        );
+        allocatedQuantityForProduct(product, excludingItemId: excludingItemId);
 
     return remainingStock < 0 ? 0 : remainingStock;
   }
@@ -263,8 +357,16 @@ extension InvoiceStateProductX on InvoiceState {
     final product = findProductById(item.productId!, products);
     if (product == null) return true;
 
-    return item.qty <
-        remainingStockForProduct(product, excludingItemId: item.id);
+    final nextItem = resolvedItemForQuantities(
+      item,
+      products,
+      qty: item.qty + 1,
+    );
+    return nextItem.qty > item.qty;
+  }
+
+  bool canIncrementSecondaryItem(InvoiceItem item, List<Product> products) {
+    return false;
   }
 
   int resolvedQuantityForItem(
@@ -272,21 +374,58 @@ extension InvoiceStateProductX on InvoiceState {
     int quantity,
     List<Product> products,
   ) {
-    final normalizedQuantity = math.max(quantity, 1);
+    return resolvedItemForQuantities(item, products, qty: quantity).qty;
+  }
+
+  InvoiceItem resolvedItemForQuantities(
+    InvoiceItem item,
+    List<Product> products, {
+    int? qty,
+    int? secondaryQty,
+  }) {
+    final candidate = item.copyWith(
+      qty: math.max(qty ?? item.qty, 1),
+      secondaryQty: 0,
+    );
+
+    InvoiceItem ensurePositive(InvoiceItem nextItem) {
+      if (nextItem.quantityInMainUnit > 0) return nextItem;
+      return nextItem.copyWith(qty: 1, secondaryQty: 0);
+    }
+
+    InvoiceItem clampToMainQuantity(InvoiceItem nextItem, double maxQuantity) {
+      final safeMax = math.max(maxQuantity, 1);
+      final unitMultiplier = nextItem.usesSecondaryUnit
+          ? nextItem.secondaryUnitRate ?? 1
+          : 1;
+      final clampedQuantity = math.max((safeMax / unitMultiplier).floor(), 1);
+      return nextItem.copyWith(qty: clampedQuantity, secondaryQty: 0);
+    }
+
     if (!type.tracksStock || item.productId == null) {
-      return normalizedQuantity;
+      return ensurePositive(candidate);
     }
 
     final product = findProductById(item.productId!, products);
-    if (product == null) return normalizedQuantity;
+    if (product == null) return ensurePositive(candidate);
 
-    final maxQuantity = remainingStockForProduct(
+    final maxTrackedQuantity = remainingStockForProduct(
       product,
       excludingItemId: item.id,
     );
-    if (maxQuantity < 1) return 1;
+    final rate = product.secondaryUnitRate ?? item.secondaryUnitRate ?? 0;
+    final maxMainQuantity =
+        product.stockUnit == ProductStockUnit.secondary &&
+            product.hasSecondaryUnit &&
+            rate > 0
+        ? maxTrackedQuantity * rate
+        : maxTrackedQuantity.toDouble();
 
-    return normalizedQuantity.clamp(1, maxQuantity).toInt();
+    if (candidate.quantityInMainUnit <= maxMainQuantity) {
+      return ensurePositive(candidate);
+    }
+
+    return clampToMainQuantity(candidate, maxMainQuantity);
   }
 
   Product? suggestedProduct(List<Product> products) {

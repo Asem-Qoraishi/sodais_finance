@@ -1,9 +1,10 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:sodais_finance/core/assets/assets.gen.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/core/widgets/text_field/custom_text_field.dart';
 import 'package:sodais_finance/features/invoices/presentation/widgets/date_picker.dart';
 import 'package:sodais_finance/features/persons/data/repositories/person_repository_impl.dart';
@@ -100,8 +101,8 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
       return;
     }
 
-    final amount = double.tryParse(_amountController.text.trim());
-    if (amount == null || amount <= 0) {
+    final amount = AppNumberFormatter.parseDouble(_amountController.text);
+    if (amount <= 0) {
       ScaffoldMessenger.of(
         context,
       ).showSnackBar(SnackBar(content: Text(LocaleKeys.invalidNumber.tr())));
@@ -242,20 +243,21 @@ class _PaymentsScreenState extends ConsumerState<PaymentsScreen> {
                         CustomTextField(
                           controller: _amountController,
                           label: LocaleKeys.amount.tr(),
+                          prefixIconSource: Assets.icons.money,
                           keyboardType: const TextInputType.numberWithOptions(
                             decimal: true,
                           ),
                           inputFormatters: [
-                            FilteringTextInputFormatter.allow(
-                              RegExp(r'^\d*\.?\d{0,2}'),
-                            ),
+                            AppNumberTextInputFormatter(allowDecimal: true),
                           ],
                           validator: (value) {
                             if (value == null || value.trim().isEmpty) {
                               return LocaleKeys.fieldRequired.tr();
                             }
-                            final amount = double.tryParse(value.trim());
-                            if (amount == null || amount <= 0) {
+                            final amount = AppNumberFormatter.parseDouble(
+                              value,
+                            );
+                            if (amount <= 0) {
                               return LocaleKeys.invalidNumber.tr();
                             }
                             return null;

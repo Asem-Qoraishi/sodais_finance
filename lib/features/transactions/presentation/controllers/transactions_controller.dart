@@ -7,7 +7,7 @@ import 'package:sodais_finance/features/transactions/presentation/controllers/tr
 
 enum TransactionsSection { invoices, payments }
 
-enum InvoiceSectionFilter { all, paid, unpaid, partialPaid, overdue }
+enum InvoiceSectionFilter { all, paid, unpaid, overdue }
 
 enum PaymentSectionFilter { all, receipt, payment, openingBalance }
 

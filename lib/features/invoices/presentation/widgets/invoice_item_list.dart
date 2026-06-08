@@ -1,7 +1,9 @@
 import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
+import 'package:sodais_finance/core/assets/assets.gen.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/core/widgets/buttons/custom_button.dart';
 import 'package:sodais_finance/core/widgets/cards/custom_card.dart';
 import 'package:sodais_finance/core/widgets/text_field/custom_text_field.dart';
@@ -18,6 +20,7 @@ class InvoiceItemList extends StatelessWidget {
     required this.onItemProductChanged,
     required this.onItemQuantityChanged,
     required this.onItemPriceChanged,
+    required this.onItemUnitChanged,
   });
 
   final InvoiceState invoiceState;
@@ -27,6 +30,7 @@ class InvoiceItemList extends StatelessWidget {
   final void Function(String itemId, Product product) onItemProductChanged;
   final void Function(String itemId, int quantity) onItemQuantityChanged;
   final void Function(String itemId, double price) onItemPriceChanged;
+  final void Function(String itemId, ProductStockUnit unit) onItemUnitChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -61,6 +65,8 @@ class InvoiceItemList extends StatelessWidget {
                 onItemQuantityChanged(invoiceState.items[i].id, quantity),
             onPriceChanged: (price) =>
                 onItemPriceChanged(invoiceState.items[i].id, price),
+            onUnitChanged: (unit) =>
+                onItemUnitChanged(invoiceState.items[i].id, unit),
           ),
         SizedBox(
           width: double.infinity,
@@ -95,6 +101,7 @@ class InvoiceItemCard extends StatefulWidget {
     required this.onProductChanged,
     required this.onQuantityChanged,
     required this.onPriceChanged,
+    required this.onUnitChanged,
   });
 
   final int itemIndex;
@@ -105,6 +112,7 @@ class InvoiceItemCard extends StatefulWidget {
   final ValueChanged<Product> onProductChanged;
   final ValueChanged<int> onQuantityChanged;
   final ValueChanged<double> onPriceChanged;
+  final ValueChanged<ProductStockUnit> onUnitChanged;
 
   @override
   State<InvoiceItemCard> createState() => _InvoiceItemCardState();
@@ -156,15 +164,14 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
       return;
     }
 
-    final parsed = double.tryParse(value);
-    if (parsed == null) return;
-    widget.onPriceChanged(parsed);
+    widget.onPriceChanged(AppNumberFormatter.parseDouble(value));
   }
 
   @override
   Widget build(BuildContext context) {
     final selectedProduct = _selectedProduct();
     final selectedProductId = selectedProduct?.id;
+    final availableUnits = widget.item.availableUnits(selectedProduct);
     final theme = Theme.of(context);
     final compactFieldPadding = EdgeInsets.symmetric(
       horizontal: sizeConstants.spacingSmall,
@@ -261,8 +268,80 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
 
     final quantityField = _QuantitySelector(
       quantity: widget.item.qty,
+      minimum: 1,
+      label: widget.item.unitName.isEmpty
+          ? LocaleKeys.quantity.tr()
+          : '${LocaleKeys.quantity.tr()} (${widget.item.unitName})',
       canIncrement: widget.canIncrement,
       onChanged: widget.onQuantityChanged,
+    );
+
+    final unitField = availableUnits.length < 2
+        ? null
+        : Column(
+            spacing: sizeConstants.spacingXXSmall,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                LocaleKeys.units.tr(),
+                style: theme.inputDecorationTheme.labelStyle,
+              ),
+              SizedBox(
+                height: sizeConstants.buttonHeightMedium,
+                child: DropdownButtonFormField<ProductStockUnit>(
+                  initialValue: widget.item.unit,
+                  isDense: true,
+                  decoration: InputDecoration(
+                    isDense: true,
+                    contentPadding: compactFieldPadding,
+                  ),
+                  items: availableUnits
+                      .map(
+                        (unit) => DropdownMenuItem<ProductStockUnit>(
+                          value: unit,
+                          child: Text(
+                            unit == ProductStockUnit.main
+                                ? widget.item.mainUnitName
+                                : widget.item.secondaryUnitName ?? '',
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                      )
+                      .toList(growable: false),
+                  onChanged: (value) {
+                    if (value != null) widget.onUnitChanged(value);
+                  },
+                ),
+              ),
+            ],
+          );
+
+    final quantityAndUnitFields = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: sizeConstants.buttonHeightSmall * 4.4,
+          child: quantityField,
+        ),
+        if (unitField != null) ...[
+          SizedBox(width: sizeConstants.spacingSmall),
+          Expanded(child: unitField),
+        ],
+      ],
+    );
+
+    final desktopQuantityAndUnitFields = Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        SizedBox(
+          width: sizeConstants.buttonHeightSmall * 4.4,
+          child: quantityField,
+        ),
+        if (unitField != null) ...[
+          SizedBox(width: sizeConstants.spacingSmall),
+          SizedBox(width: 132, child: unitField),
+        ],
+      ],
     );
 
     final priceField = Column(
@@ -270,20 +349,24 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
-          LocaleKeys.unit_price.tr(),
+          widget.item.mainUnitName.trim().isEmpty
+              ? LocaleKeys.unit_price.tr()
+              : '${LocaleKeys.unit_price.tr()} (${widget.item.mainUnitName.trim()})',
           style: theme.inputDecorationTheme.labelStyle,
         ),
         SizedBox(
           height: sizeConstants.buttonHeightMedium,
           child: CustomTextField(
             controller: _priceController,
+            prefixIconSource: Assets.icons.money,
             keyboardType: const TextInputType.numberWithOptions(decimal: true),
             onChange: _onPriceChanged,
+            inputFormatters: [AppNumberTextInputFormatter(allowDecimal: true)],
             isDense: true,
             contentPadding: compactFieldPadding,
             validator: (value) {
-              final parsed = double.tryParse(value ?? '');
-              if (parsed == null || parsed.isNegative) {
+              final parsed = AppNumberFormatter.parseDouble(value);
+              if (parsed.isNegative) {
                 return LocaleKeys.invalidNumber.tr();
               }
               return null;
@@ -299,23 +382,21 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
       child: Column(
         spacing: sizeConstants.spacingSmall,
         children: [
-          LayoutBuilder(
-            builder: (context, constraints) {
-              return Row(
-                spacing: sizeConstants.spacingSmall,
-                children: [
-                  indexBadge,
-                  Expanded(child: productDropdown),
-                  deleteButton,
-                ],
-              );
-            },
+          Row(
+            spacing: sizeConstants.spacingSmall,
+            children: [
+              indexBadge,
+              Expanded(child: productDropdown),
+              deleteButton,
+            ],
           ),
           if ((widget.item.inventoryId ?? '').isNotEmpty)
             Align(
               alignment: AlignmentDirectional.centerStart,
               child: Text(
-                widget.item.inventoryId!,
+                selectedProduct == null
+                    ? widget.item.inventoryId!
+                    : '${widget.item.inventoryId!} • ${selectedProduct.trackedUnitName}',
                 style: theme.textTheme.bodySmall?.copyWith(
                   color: theme.hintColor,
                 ),
@@ -323,22 +404,16 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
             ),
           LayoutBuilder(
             builder: (context, constraints) {
-              if (constraints.maxWidth < 460) {
+              if (constraints.maxWidth < 520) {
                 return Column(
                   spacing: sizeConstants.spacingSmall,
-                  crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
-                    Row(
-                      children: [
-                        SizedBox(
-                          width: sizeConstants.buttonHeightSmall * 3.4,
-                          child: quantityField,
-                        ),
-                        SizedBox(width: sizeConstants.spacingSmall),
-                        Expanded(child: priceField),
-                      ],
+                    quantityAndUnitFields,
+                    priceField,
+                    Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      child: subtotalBadge,
                     ),
-                    subtotalBadge,
                   ],
                 );
               }
@@ -346,10 +421,7 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
               return Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  SizedBox(
-                    width: sizeConstants.buttonHeightSmall * 3.8,
-                    child: quantityField,
-                  ),
+                  desktopQuantityAndUnitFields,
                   SizedBox(width: sizeConstants.spacingSmall),
                   Expanded(child: priceField),
                   SizedBox(width: sizeConstants.spacingSmall),
@@ -364,16 +436,60 @@ class _InvoiceItemCardState extends State<InvoiceItemCard> {
   }
 }
 
-class _QuantitySelector extends StatelessWidget {
+class _QuantitySelector extends StatefulWidget {
   const _QuantitySelector({
     required this.quantity,
+    required this.minimum,
+    required this.label,
     required this.canIncrement,
     required this.onChanged,
   });
 
   final int quantity;
+  final int minimum;
+  final String label;
   final bool canIncrement;
   final ValueChanged<int> onChanged;
+
+  @override
+  State<_QuantitySelector> createState() => _QuantitySelectorState();
+}
+
+class _QuantitySelectorState extends State<_QuantitySelector> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = TextEditingController(text: widget.quantity.toString());
+  }
+
+  @override
+  void didUpdateWidget(covariant _QuantitySelector oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final nextValue = widget.quantity.toString();
+    if (_controller.text != nextValue) {
+      _controller.value = TextEditingValue(
+        text: nextValue,
+        selection: TextSelection.collapsed(offset: nextValue.length),
+      );
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _emitQuantity(int quantity) {
+    widget.onChanged(quantity < widget.minimum ? widget.minimum : quantity);
+  }
+
+  void _onTextChanged(String value) {
+    if (value.trim().isEmpty) return;
+    _emitQuantity(AppNumberFormatter.parseInt(value));
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -387,10 +503,7 @@ class _QuantitySelector extends StatelessWidget {
       spacing: sizeConstants.spacingXXSmall,
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Text(
-          LocaleKeys.quantity.tr(),
-          style: theme.inputDecorationTheme.labelStyle,
-        ),
+        Text(widget.label, style: theme.inputDecorationTheme.labelStyle),
         Container(
           height: sizeConstants.buttonHeightMedium,
           decoration: BoxDecoration(
@@ -404,22 +517,35 @@ class _QuantitySelector extends StatelessWidget {
           child: Row(
             children: [
               IconButton(
-                onPressed: quantity > 1 ? () => onChanged(quantity - 1) : null,
+                onPressed: widget.quantity > widget.minimum
+                    ? () => _emitQuantity(widget.quantity - 1)
+                    : null,
                 visualDensity: VisualDensity.compact,
                 constraints: buttonConstraints,
                 padding: EdgeInsets.zero,
                 icon: const Icon(Icons.remove_circle_outline),
               ),
               Expanded(
-                child: Center(
-                  child: Text(
-                    quantity.toString(),
-                    style: theme.textTheme.titleSmall,
+                child: TextField(
+                  controller: _controller,
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  inputFormatters: [
+                    AppNumberTextInputFormatter(allowDecimal: false),
+                  ],
+                  decoration: const InputDecoration(
+                    border: InputBorder.none,
+                    isDense: true,
+                    contentPadding: EdgeInsets.zero,
                   ),
+                  style: theme.textTheme.titleSmall,
+                  onChanged: _onTextChanged,
                 ),
               ),
               IconButton(
-                onPressed: canIncrement ? () => onChanged(quantity + 1) : null,
+                onPressed: widget.canIncrement
+                    ? () => _emitQuantity(widget.quantity + 1)
+                    : null,
                 visualDensity: VisualDensity.compact,
                 constraints: buttonConstraints,
                 padding: EdgeInsets.zero,

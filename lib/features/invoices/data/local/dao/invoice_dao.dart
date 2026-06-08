@@ -1,3 +1,5 @@
+import 'dart:math' as math;
+
 import 'package:drift/drift.dart';
 import 'package:sodais_finance/features/finance/data/local/tables/finance_tables.dart';
 import 'package:sodais_finance/features/invoices/data/local/tables/invoice_tables.dart';
@@ -90,6 +92,10 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
       taxRate: row.taxRate,
       stock: row.stock,
       reorderLevel: row.reorderLevel,
+      mainUnitName: row.mainUnitName,
+      secondaryUnitName: row.secondaryUnitName,
+      secondaryUnitRate: row.secondaryUnitRate,
+      stockUnit: ProductStockUnit.fromValue(row.stockUnit),
       location: row.location,
       createdAt: row.createdAt,
       updatedAt: row.updatedAt,
@@ -219,31 +225,66 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
     );
   }
 
-  Map<int, int> _stockTrackedQuantities(List<InvoiceItemInput> items) {
+  Future<Map<int, ProductTableData>> _productsById(Iterable<int> ids) async {
+    final normalizedIds = ids.toSet().toList(growable: false);
+    if (normalizedIds.isEmpty) return const {};
+
+    final products = await (select(
+      productTable,
+    )..where((tbl) => tbl.id.isIn(normalizedIds))).get();
+    return {for (final product in products) product.id: product};
+  }
+
+  int _trackedQuantityForProduct({
+    required ProductTableData product,
+    required double mainQuantity,
+  }) {
+    if (mainQuantity <= 0) {
+      throw StateError('Quantity must be greater than zero.');
+    }
+
+    if (ProductStockUnit.fromValue(product.stockUnit) ==
+        ProductStockUnit.main) {
+      return math.max(mainQuantity.ceil(), 1);
+    }
+
+    final rate = product.secondaryUnitRate;
+    if (rate == null || rate <= 0) {
+      throw StateError('Secondary unit rate is missing for ${product.name}.');
+    }
+
+    return math.max((mainQuantity / rate).ceil(), 1);
+  }
+
+  Future<Map<int, int>> _stockTrackedQuantities(
+    List<InvoiceItemInput> items,
+  ) async {
     final quantities = <int, int>{};
+    final productsById = await _productsById(
+      items.map((item) => item.productId),
+    );
 
     for (final item in items) {
-      final quantity = item.quantity;
-      if (quantity <= 0) {
-        throw StateError('Quantity must be greater than zero.');
-      }
-      if (quantity != quantity.roundToDouble()) {
-        throw StateError(
-          'Stock-tracked invoices require whole-number quantities.',
-        );
+      final product = productsById[item.productId];
+      if (product == null) {
+        throw StateError('Product ${item.productId} was not found.');
       }
 
+      final trackedQuantity = _trackedQuantityForProduct(
+        product: product,
+        mainQuantity: item.quantity,
+      );
       quantities.update(
         item.productId,
-        (value) => value + quantity.toInt(),
-        ifAbsent: () => quantity.toInt(),
+        (value) => value + trackedQuantity,
+        ifAbsent: () => trackedQuantity,
       );
     }
 
     return quantities;
   }
 
-  Map<int, int> _stockTrackedQuantitiesFromSavedItems(
+  Future<Map<int, int>> _stockTrackedQuantitiesFromSavedItems(
     List<InvoiceItemTableData> items,
   ) {
     return _stockTrackedQuantities(
@@ -328,7 +369,7 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
     required String status,
     required List<InvoiceItemInput> items,
   }) async {
-    final stockTrackedQuantities = _stockTrackedQuantities(items);
+    final stockTrackedQuantities = await _stockTrackedQuantities(items);
 
     return transaction(() async {
       if (type == 'sale') {
@@ -407,10 +448,10 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
       throw StateError('Invoice $invoiceId was not found.');
     }
     final existingItems = await getItemsForInvoice(invoiceId);
-    final existingQuantities = _stockTrackedQuantitiesFromSavedItems(
+    final existingQuantities = await _stockTrackedQuantitiesFromSavedItems(
       existingItems,
     );
-    final nextQuantities = _stockTrackedQuantities(items);
+    final nextQuantities = await _stockTrackedQuantities(items);
 
     await transaction(() async {
       await _applyStockAdjustments(
@@ -471,7 +512,7 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
     final existingInvoice = await getInvoiceById(id);
     if (existingInvoice == null) return;
     final existingItems = await getItemsForInvoice(id);
-    final existingQuantities = _stockTrackedQuantitiesFromSavedItems(
+    final existingQuantities = await _stockTrackedQuantitiesFromSavedItems(
       existingItems,
     );
 
@@ -486,5 +527,21 @@ class InvoiceDao extends DatabaseAccessor<AppDatabase> with _$InvoiceDaoMixin {
       )..where((tbl) => tbl.invoiceId.equals(id))).go();
       await (delete(invoiceTable)..where((tbl) => tbl.id.equals(id))).go();
     });
+  }
+
+  Future<void> updateInvoicePaymentSummary({
+    required int invoiceId,
+    required double amountPaid,
+    required String status,
+  }) async {
+    await (update(
+      invoiceTable,
+    )..where((tbl) => tbl.id.equals(invoiceId))).write(
+      InvoiceTableCompanion(
+        amountPaid: Value(amountPaid),
+        status: Value(status),
+        updatedAt: Value(DateTime.now()),
+      ),
+    );
   }
 }

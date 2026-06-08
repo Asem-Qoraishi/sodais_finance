@@ -38,7 +38,7 @@ class AppDatabase extends _$AppDatabase {
   AppDatabase(super.e);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -62,6 +62,12 @@ class AppDatabase extends _$AppDatabase {
             ELSE 0
           END
         ''');
+      }
+      if (from < 5) {
+        await migrator.addColumn(productTable, productTable.mainUnitName);
+        await migrator.addColumn(productTable, productTable.secondaryUnitName);
+        await migrator.addColumn(productTable, productTable.secondaryUnitRate);
+        await migrator.addColumn(productTable, productTable.stockUnit);
       }
     },
   );

@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/core/utils/formatters/relative_time_formatter.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 
@@ -202,7 +203,7 @@ class PersonCard extends StatelessWidget {
           Icon(badgeIcon, color: accentColor, size: sizeConstants.iconSmall),
           SizedBox(width: sizeConstants.spacingXXSmall),
           Text(
-            _formatMoney(person.balance.abs()),
+            AppNumberFormatter.formatAmount(person.balance.abs()),
             style: theme.textTheme.labelMedium?.copyWith(
               color: accentColor,
               fontWeight: FontWeight.w800,
@@ -211,25 +212,5 @@ class PersonCard extends StatelessWidget {
         ],
       ),
     );
-  }
-
-  String _formatMoney(double value) {
-    final fixed = value.abs().toStringAsFixed(2);
-    final parts = fixed.split('.');
-    return '\$${_withThousandsSeparator(parts[0])}.${parts[1]}';
-  }
-
-  String _withThousandsSeparator(String value) {
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < value.length; i++) {
-      final remaining = value.length - i;
-      buffer.write(value[i]);
-      if (remaining > 1 && remaining % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-
-    return buffer.toString();
   }
 }

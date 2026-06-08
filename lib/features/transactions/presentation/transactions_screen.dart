@@ -8,11 +8,16 @@ import 'package:shamsi_date/shamsi_date.dart';
 import 'package:sodais_finance/config/app_router.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/core/utils/helpers/app_locale_helper.dart';
 import 'package:sodais_finance/core/widgets/actions/quick_action_buttons.dart';
 import 'package:sodais_finance/core/widgets/cards/custom_card.dart';
 import 'package:sodais_finance/core/widgets/filters/filter_chip_bar.dart';
+import 'package:sodais_finance/core/widgets/dialogs/delete_confirmation_dialog.dart';
+import 'package:sodais_finance/features/app/data/app_database.dart';
+import 'package:sodais_finance/features/invoices/application/providers/invoice_providers.dart';
 import 'package:sodais_finance/features/invoices/presentation/controllers/invoice_form_state.dart';
+import 'package:sodais_finance/features/invoices/presentation/widgets/invoice_details_sheet.dart';
 import 'package:sodais_finance/features/transactions/application/providers/transaction_providers.dart';
 import 'package:sodais_finance/features/transactions/domain/transaction_feed_entry.dart';
 import 'package:sodais_finance/features/transactions/domain/transactions_repository.dart';
@@ -55,7 +60,6 @@ class TransactionsScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final feedAsync = ref.watch(transactionsControllerProvider);
-    final rawFeedAsync = ref.watch(unifiedTransactionFeedProvider);
     final selectedSection = ref.watch(transactionsSectionProvider);
     final invoiceFilter = ref.watch(invoiceSectionFilterProvider);
     final paymentFilter = ref.watch(paymentSectionFilterProvider);
@@ -165,15 +169,11 @@ class TransactionsScreen extends ConsumerWidget {
                                 TransactionsSection.invoices) {
                               return _InvoiceCard(
                                 entry: entry,
-                                onTap: () {
-                                  final rawEntries =
-                                      rawFeedAsync.asData?.value ?? const [];
-                                  _showInvoicePaymentsSheet(
-                                    context,
-                                    entry: entry,
-                                    allEntries: rawEntries,
-                                  );
-                                },
+                                onTap: () => _openInvoiceActions(
+                                  context,
+                                  ref,
+                                  entry: entry,
+                                ),
                               );
                             }
 
@@ -197,6 +197,7 @@ class TransactionsScreen extends ConsumerWidget {
     );
   }
 
+  // ignore: unused_element
   Future<void> _showInvoicePaymentsSheet(
     BuildContext context, {
     required TransactionFeedEntry entry,
@@ -223,7 +224,84 @@ class TransactionsScreen extends ConsumerWidget {
       ),
     );
   }
+
+  Future<void> _openInvoiceActions(
+    BuildContext context,
+    WidgetRef ref, {
+    required TransactionFeedEntry entry,
+  }) async {
+    final paymentStatus = _paymentStatusFromName(entry.status);
+    final selected = await showModalBottomSheet<_InvoiceAction>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => SafeArea(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            ListTile(
+              leading: const Icon(Icons.edit_outlined),
+              title: Text(LocaleKeys.editInvoice.tr()),
+              onTap: () => Navigator.of(context).pop(_InvoiceAction.edit),
+            ),
+            if (paymentStatus != PaymentStatus.paid)
+              ListTile(
+                leading: const Icon(Icons.payments_outlined),
+                title: Text(LocaleKeys.addPayment.tr()),
+                onTap: () => Navigator.of(context).pop(_InvoiceAction.payment),
+              ),
+            ListTile(
+              leading: const Icon(Icons.receipt_long_outlined),
+              title: Text(LocaleKeys.showDetails.tr()),
+              onTap: () => Navigator.of(context).pop(_InvoiceAction.details),
+            ),
+            ListTile(
+              leading: const Icon(Icons.delete_outline),
+              title: Text(LocaleKeys.deleteInvoice.tr()),
+              onTap: () => Navigator.of(context).pop(_InvoiceAction.delete),
+            ),
+          ],
+        ),
+      ),
+    );
+
+    if (!context.mounted || selected == null) return;
+
+    switch (selected) {
+      case _InvoiceAction.edit:
+        _openLinkedInvoice(context, entry);
+        return;
+      case _InvoiceAction.payment:
+        _openLinkedInvoice(context, entry);
+        return;
+      case _InvoiceAction.details:
+        await showModalBottomSheet<void>(
+          context: context,
+          isScrollControlled: true,
+          showDragHandle: true,
+          builder: (_) => InvoiceDetailsSheet(invoiceId: entry.referenceId),
+        );
+        return;
+      case _InvoiceAction.delete:
+        final confirmed = await showDeleteConfirmationDialog(
+          context: context,
+          title: LocaleKeys.deleteInvoice.tr(),
+          message: LocaleKeys.deleteInvoiceConfirmation.tr(),
+        );
+        if (!confirmed) return;
+        await ref.read(appDatabaseProvider).transaction(() async {
+          await ref.read(invoiceDaoProvider).deleteInvoice(entry.referenceId);
+          await ref
+              .read(deleteInvoiceLedgerEntriesUseCaseProvider)
+              .call(entry.referenceId);
+        });
+        ref.invalidate(unifiedTransactionFeedProvider);
+        ref.invalidate(invoiceSummaryListProvider);
+        return;
+    }
+  }
 }
+
+enum _InvoiceAction { edit, payment, details, delete }
 
 class _TransactionsSectionSwitcher extends StatelessWidget {
   const _TransactionsSectionSwitcher({
@@ -398,118 +476,107 @@ class _InvoiceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final paymentStatus = _paymentStatusFromName(entry.status);
-    final statusColor = _paymentStatusColor(context, paymentStatus);
     final amountPaid = entry.amountPaid ?? 0;
     final remaining = math.max(0.0, entry.amount - amountPaid).toDouble();
+    final invoiceType = _invoiceTypeFromName(entry.entryType);
 
     return CustomCard(
       margin: EdgeInsets.zero,
-      padding: EdgeInsets.zero,
+      padding: EdgeInsets.all(sizeConstants.spacingSmall),
       onTap: onTap,
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            width: 5,
-            height: 142,
-            decoration: BoxDecoration(
-              color: statusColor,
-              borderRadius: BorderRadius.only(
-                topLeft: Radius.circular(sizeConstants.radiusSmall),
-                bottomLeft: Radius.circular(sizeConstants.radiusSmall),
+          Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              _InvoiceDateBadge(date: entry.occurredAt),
+              SizedBox(width: sizeConstants.spacingSmall),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      _invoiceContactName(context, entry),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                    SizedBox(height: sizeConstants.spacingXXSmall),
+                    Text(
+                      _invoiceCardSubtitle(entry, invoiceType),
+                      style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                        color: Theme.of(context).hintColor,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ),
-          Expanded(
-            child: Padding(
-              padding: EdgeInsets.all(sizeConstants.spacingMedium),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
+              SizedBox(width: sizeConstants.spacingSmall),
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
                 children: [
-                  Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          _DateText.formatShort(context, entry.occurredAt),
-                          style: Theme.of(context).textTheme.bodySmall
-                              ?.copyWith(
-                                color: Theme.of(context).hintColor,
-                                fontWeight: FontWeight.w600,
-                              ),
-                        ),
-                      ),
-                      _StatusDotPill(
-                        label: paymentStatus.label,
-                        color: statusColor,
-                      ),
-                    ],
+                  Text(
+                    _MoneyText.format(entry.amount),
+                    style: Theme.of(context).textTheme.bodyLarge?.copyWith(
+                      fontWeight: FontWeight.w700,
+                    ),
                   ),
-                  SizedBox(height: sizeConstants.spacingSmall),
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              _invoiceContactName(context, entry),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: Theme.of(context).textTheme.titleMedium
-                                  ?.copyWith(fontWeight: FontWeight.w800),
-                            ),
-                            SizedBox(height: sizeConstants.spacingXXSmall),
-                            Text(
-                              _invoiceNumber(entry),
-                              style: Theme.of(context).textTheme.bodyMedium
-                                  ?.copyWith(
-                                    color: Theme.of(context).hintColor,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                            ),
-                          ],
-                        ),
-                      ),
-                      SizedBox(width: sizeConstants.spacingSmall),
-                      Text(
-                        _MoneyText.format(entry.amount),
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.w900,
-                        ),
-                      ),
-                    ],
-                  ),
-                  SizedBox(height: sizeConstants.spacingSmall),
-                  Wrap(
-                    spacing: sizeConstants.spacingXSmall,
-                    runSpacing: sizeConstants.spacingXSmall,
-                    children: [
-                      _SoftTag(
-                        icon: _invoiceTypeIcon(
-                          _invoiceTypeFromName(entry.entryType),
-                        ),
-                        label: _invoiceTypeFromName(entry.entryType).label,
-                        color: _invoiceTypeColor(
-                          _invoiceTypeFromName(entry.entryType),
-                        ),
-                      ),
-                      _SoftTag(
-                        icon: Icons.payments_outlined,
-                        label:
-                            '${LocaleKeys.amountPaid.tr()}: ${_MoneyText.format(amountPaid)}',
-                        color: const Color(0xFF196BDE),
-                      ),
-                      _SoftTag(
-                        icon: Icons.account_balance_wallet_outlined,
-                        label:
-                            '${LocaleKeys.remaining.tr()}: ${_MoneyText.format(remaining)}',
-                        color: statusColor,
-                      ),
-                    ],
+                  SizedBox(height: sizeConstants.spacingXXSmall),
+                  Text(
+                    '${LocaleKeys.remaining.tr()}: ${_MoneyText.format(remaining)}',
+                    style: Theme.of(context).textTheme.labelMedium?.copyWith(
+                      color: Theme.of(context).hintColor,
+                    ),
                   ),
                 ],
               ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _InvoiceDateBadge extends StatelessWidget {
+  const _InvoiceDateBadge({required this.date});
+
+  final DateTime date;
+
+  @override
+  Widget build(BuildContext context) {
+    final jalaliDate = Jalali.fromDateTime(date);
+
+    return Container(
+      width: sizeConstants.avatarSmall,
+      padding: EdgeInsets.symmetric(vertical: sizeConstants.spacingXSmall),
+      decoration: BoxDecoration(
+        color: Theme.of(context).colorScheme.primary.withValues(alpha: 0.08),
+        borderRadius: BorderRadius.circular(sizeConstants.radiusMedium),
+      ),
+      child: Column(
+        children: [
+          Text(
+            jalaliDate.year.toString(),
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+            ),
+          ),
+          SizedBox(height: sizeConstants.spacingXXSmall),
+          Text(
+            jalaliDate.day.toString().padLeft(2, '0'),
+            style: Theme.of(context).textTheme.titleSmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
+              fontWeight: FontWeight.w800,
+            ),
+          ),
+          Text(
+            jalaliDate.formatter.mNAf,
+            style: Theme.of(context).textTheme.labelSmall?.copyWith(
+              color: Theme.of(context).colorScheme.primary,
             ),
           ),
         ],
@@ -518,6 +585,7 @@ class _InvoiceCard extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _InvoicePaymentsSheet extends StatelessWidget {
   const _InvoicePaymentsSheet({
     required this.entry,
@@ -856,6 +924,7 @@ class _EmptyTransactionsState extends StatelessWidget {
   }
 }
 
+// ignore: unused_element
 class _StatusDotPill extends StatelessWidget {
   const _StatusDotPill({required this.label, required this.color});
 
@@ -966,27 +1035,12 @@ class _MetaLabel extends StatelessWidget {
 
 class _MoneyText {
   static String format(double value) {
-    final fixed = value.abs().toStringAsFixed(2);
-    final parts = fixed.split('.');
-    return '\$${_withThousandsSeparator(parts[0])}.${parts[1]}';
-  }
-
-  static String _withThousandsSeparator(String value) {
-    final buffer = StringBuffer();
-
-    for (int i = 0; i < value.length; i++) {
-      final remaining = value.length - i;
-      buffer.write(value[i]);
-      if (remaining > 1 && remaining % 3 == 1) {
-        buffer.write(',');
-      }
-    }
-
-    return buffer.toString();
+    return AppNumberFormatter.formatAmount(value);
   }
 }
 
 class _DateText {
+  // ignore: unused_element
   static String formatShort(BuildContext context, DateTime date) {
     if (appLocaleHelper.isCurrentLanguageEnglish(context)) {
       return DateFormat('dd/MM/yyyy').format(date);
@@ -1033,6 +1087,18 @@ String _invoiceNumber(TransactionFeedEntry entry) {
     return '#${entry.referenceId}';
   }
   return '#$invoiceNumber';
+}
+
+String _invoiceCardSubtitle(
+  TransactionFeedEntry entry,
+  InvoiceType invoiceType,
+) {
+  final invoiceNumber = entry.invoiceNumber?.trim();
+  if (invoiceNumber != null && invoiceNumber.isNotEmpty) {
+    return '${invoiceType.label} $invoiceNumber';
+  }
+
+  return '${invoiceType.label} ${entry.referenceId}';
 }
 
 String _paymentTitle(BuildContext context, TransactionFeedEntry entry) {
@@ -1116,22 +1182,6 @@ PaymentStatus _paymentStatusFromName(String? value) {
   return PaymentStatus.unpaid;
 }
 
-IconData _invoiceTypeIcon(InvoiceType type) {
-  return switch (type) {
-    InvoiceType.sale => Icons.shopping_bag_outlined,
-    InvoiceType.purchase => Icons.inventory_2_outlined,
-    InvoiceType.returned => Icons.assignment_return_outlined,
-  };
-}
-
-Color _invoiceTypeColor(InvoiceType type) {
-  return switch (type) {
-    InvoiceType.sale => const Color(0xFF1A9B72),
-    InvoiceType.purchase => const Color(0xFF196BDE),
-    InvoiceType.returned => const Color(0xFFC2822E),
-  };
-}
-
 Color _paymentStatusColor(BuildContext context, PaymentStatus status) {
   return switch (status) {
     PaymentStatus.paid => const Color(0xFF1A9B72),
@@ -1151,9 +1201,9 @@ List<TransactionFeedEntry> _applyInvoiceSectionFilter(
         return switch (filter) {
           InvoiceSectionFilter.all => true,
           InvoiceSectionFilter.paid => status == PaymentStatus.paid,
-          InvoiceSectionFilter.unpaid => status == PaymentStatus.unpaid,
-          InvoiceSectionFilter.partialPaid =>
-            status == PaymentStatus.partialPaid,
+          InvoiceSectionFilter.unpaid =>
+            status == PaymentStatus.unpaid ||
+                status == PaymentStatus.partialPaid,
           InvoiceSectionFilter.overdue => _isOverdueInvoice(entry, now),
         };
       })

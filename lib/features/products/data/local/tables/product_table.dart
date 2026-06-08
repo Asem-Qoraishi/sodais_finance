@@ -17,6 +17,12 @@ class ProductTable extends Table {
   RealColumn get taxRate => real().withDefault(const Constant(0.0))();
   IntColumn get stock => integer().withDefault(const Constant(0))();
   IntColumn get reorderLevel => integer().withDefault(const Constant(0))();
+  TextColumn get mainUnitName =>
+      text().withLength(max: 64).withDefault(const Constant('item'))();
+  TextColumn get secondaryUnitName => text().nullable().withLength(max: 64)();
+  RealColumn get secondaryUnitRate => real().nullable()();
+  TextColumn get stockUnit =>
+      text().withLength(max: 16).withDefault(const Constant('main'))();
   TextColumn get location => text().nullable().withLength(max: 256)();
 
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();

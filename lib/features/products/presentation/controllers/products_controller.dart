@@ -102,6 +102,10 @@ class ProductsController extends _$ProductsController {
     required double taxRate,
     required int stock,
     required int reorderLevel,
+    required String mainUnitName,
+    String? secondaryUnitName,
+    double? secondaryUnitRate,
+    required ProductStockUnit stockUnit,
     String? location,
   }) async {
     final now = DateTime.now();
@@ -117,6 +121,10 @@ class ProductsController extends _$ProductsController {
       taxRate: taxRate,
       stock: stock,
       reorderLevel: reorderLevel,
+      mainUnitName: mainUnitName,
+      secondaryUnitName: secondaryUnitName,
+      secondaryUnitRate: secondaryUnitRate,
+      stockUnit: stockUnit,
       location: location,
       createdAt: now,
       updatedAt: now,

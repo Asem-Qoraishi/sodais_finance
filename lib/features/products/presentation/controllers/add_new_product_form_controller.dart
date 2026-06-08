@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 import 'package:sodais_finance/features/products/presentation/controllers/products_controller.dart';
 
@@ -14,12 +15,16 @@ part 'add_new_product_form_controller.g.dart';
 class AddNewProductFormState {
   final String? selectedImagePath;
   final String? selectedCategoryId;
+  final bool hasSecondaryUnit;
+  final ProductStockUnit stockUnit;
   final bool isSaving;
   final String? errorMessage;
 
   const AddNewProductFormState({
     this.selectedImagePath,
     this.selectedCategoryId,
+    this.hasSecondaryUnit = false,
+    this.stockUnit = ProductStockUnit.main,
     this.isSaving = false,
     this.errorMessage,
   });
@@ -29,6 +34,8 @@ class AddNewProductFormState {
     bool clearImage = false,
     String? selectedCategoryId,
     bool clearCategory = false,
+    bool? hasSecondaryUnit,
+    ProductStockUnit? stockUnit,
     bool? isSaving,
     String? errorMessage,
     bool clearError = false,
@@ -40,6 +47,8 @@ class AddNewProductFormState {
       selectedCategoryId: clearCategory
           ? null
           : (selectedCategoryId ?? this.selectedCategoryId),
+      hasSecondaryUnit: hasSecondaryUnit ?? this.hasSecondaryUnit,
+      stockUnit: stockUnit ?? this.stockUnit,
       isSaving: isSaving ?? this.isSaving,
       errorMessage: clearError ? null : (errorMessage ?? this.errorMessage),
     );
@@ -53,15 +62,34 @@ class AddNewProductForm extends _$AddNewProductForm {
   @override
   AddNewProductFormState build() => const AddNewProductFormState();
 
-  void initialize({String? imagePath, String? categoryId}) {
+  void initialize({
+    String? imagePath,
+    String? categoryId,
+    bool hasSecondaryUnit = false,
+    ProductStockUnit stockUnit = ProductStockUnit.main,
+  }) {
     state = AddNewProductFormState(
       selectedImagePath: _trimToNull(imagePath),
       selectedCategoryId: _trimToNull(categoryId),
+      hasSecondaryUnit: hasSecondaryUnit,
+      stockUnit: stockUnit,
     );
   }
 
   void setCategoryId(String? categoryId) {
     state = state.copyWith(selectedCategoryId: categoryId, clearError: true);
+  }
+
+  void setHasSecondaryUnit(bool value) {
+    state = state.copyWith(
+      hasSecondaryUnit: value,
+      stockUnit: value ? state.stockUnit : ProductStockUnit.main,
+      clearError: true,
+    );
+  }
+
+  void setStockUnit(ProductStockUnit unit) {
+    state = state.copyWith(stockUnit: unit, clearError: true);
   }
 
   Future<void> pickImageFromGallery() async {
@@ -94,6 +122,9 @@ class AddNewProductForm extends _$AddNewProductForm {
     String? taxRateText,
     String? stockText,
     String? reorderLevelText,
+    required String mainUnitName,
+    String? secondaryUnitName,
+    String? secondaryUnitRateText,
     String? location,
   }) async {
     if (state.isSaving) return false;
@@ -109,6 +140,11 @@ class AddNewProductForm extends _$AddNewProductForm {
       final taxRate = _parseDouble(taxRateText);
       final stock = _parseInt(stockText);
       final reorderLevel = _parseInt(reorderLevelText);
+      final normalizedMainUnitName = mainUnitName.trim();
+      final normalizedSecondaryUnitName = _trimToNull(secondaryUnitName);
+      final secondaryUnitRate = state.hasSecondaryUnit
+          ? _parseDouble(secondaryUnitRateText)
+          : null;
       final trimmedName = name.trim();
       final productsController = ref.read(productsControllerProvider.notifier);
 
@@ -124,6 +160,10 @@ class AddNewProductForm extends _$AddNewProductForm {
           taxRate: taxRate,
           stock: stock,
           reorderLevel: reorderLevel,
+          mainUnitName: normalizedMainUnitName,
+          secondaryUnitName: normalizedSecondaryUnitName,
+          secondaryUnitRate: secondaryUnitRate,
+          stockUnit: state.stockUnit,
           location: _trimToNull(location),
         );
       } else {
@@ -140,6 +180,10 @@ class AddNewProductForm extends _$AddNewProductForm {
             taxRate: taxRate,
             stock: stock,
             reorderLevel: reorderLevel,
+            mainUnitName: normalizedMainUnitName,
+            secondaryUnitName: normalizedSecondaryUnitName,
+            secondaryUnitRate: secondaryUnitRate,
+            stockUnit: state.stockUnit,
             location: _trimToNull(location),
             createdAt: editingProduct.createdAt,
             updatedAt: DateTime.now(),
@@ -156,11 +200,11 @@ class AddNewProductForm extends _$AddNewProductForm {
   }
 
   double _parseDouble(String? value) {
-    return double.tryParse((value ?? '').trim()) ?? 0.0;
+    return AppNumberFormatter.parseDouble(value);
   }
 
   int _parseInt(String? value) {
-    final parsed = int.tryParse((value ?? '').trim()) ?? 0;
+    final parsed = AppNumberFormatter.parseInt(value);
     return parsed < 0 ? 0 : parsed;
   }
 

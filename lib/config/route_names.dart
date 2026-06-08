@@ -16,6 +16,7 @@ class RouteNames {
   final String reports = 'reports';
   final String addNewPerson = 'addNewPerson';
   final String editPerson = 'editPerson';
+  final String personTransactions = 'personTransactions';
   final String addNewProduct = 'addNewProduct';
   final String editProduct = 'editProduct';
   final String editInvoice = 'editInvoice';

@@ -5,6 +5,7 @@ import 'package:image_picker/image_picker.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/presentation/controllers/persons_controller.dart';
 
@@ -114,7 +115,7 @@ class AddNewPersonForm extends _$AddNewPersonForm {
       );
 
       if (editingPerson == null) {
-        final rawBalance = double.tryParse(balanceText.trim()) ?? 0.0;
+        final rawBalance = AppNumberFormatter.parseDouble(balanceText);
         final openingBalance =
             state.openingBalanceDirection == OpeningBalanceDirection.youReceive
             ? rawBalance.abs()

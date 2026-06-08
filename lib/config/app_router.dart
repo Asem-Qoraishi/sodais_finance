@@ -8,6 +8,7 @@ import 'package:sodais_finance/features/payments/presentation/payments_screen.da
 import 'package:sodais_finance/features/persons/domain/person.dart';
 import 'package:sodais_finance/features/persons/presentation/add_new_person_screen.dart';
 import 'package:sodais_finance/features/persons/presentation/persons_screen.dart';
+import 'package:sodais_finance/features/persons/presentation/person_transactions_screen.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 import 'package:sodais_finance/features/products/presentation/add_new_product_screen.dart';
 import 'package:sodais_finance/features/products/presentation/inventory_screen.dart';
@@ -66,6 +67,18 @@ class AppRouter {
         builder: (context, state) {
           final person = state.extra is Person ? state.extra as Person : null;
           return AddNewPersonScreen(editingPerson: person);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/${routeNames.persons}/${routeNames.personTransactions}',
+        name: routeNames.personTransactions,
+        builder: (context, state) {
+          final person = state.extra is Person ? state.extra as Person : null;
+          if (person == null) {
+            return const PersonsScreen();
+          }
+          return PersonTransactionsScreen(person: person);
         },
       ),
       GoRoute(

@@ -4,6 +4,7 @@ import 'package:easy_localization/easy_localization.dart';
 import 'package:flutter/material.dart';
 import 'package:sodais_finance/core/constants/size_constants.dart';
 import 'package:sodais_finance/core/localization/locale_keys.g.dart';
+import 'package:sodais_finance/core/utils/formatters/app_number_formatter.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 
 class ProductCard extends StatelessWidget {
@@ -33,7 +34,7 @@ class ProductCard extends StatelessWidget {
           product.name,
           maxLines: 1,
           overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.titleMedium?.copyWith(
+          style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w700,
           ),
         ),
@@ -48,12 +49,18 @@ class ProductCard extends StatelessWidget {
                 _InfoBadge(text: product.categoryName!.trim()),
               if ((product.sku ?? '').trim().isNotEmpty)
                 _InfoBadge(text: product.sku!.trim()),
+              _InfoBadge(text: product.mainUnitName),
+              if (product.hasSecondaryUnit)
+                _InfoBadge(
+                  text:
+                      '1 ${product.secondaryUnitName} = ${AppNumberFormatter.formatDecimal(product.secondaryUnitRate ?? 0, useGrouping: false)} ${product.mainUnitName}',
+                ),
             ],
           ),
         ),
         trailing: Text(
-          '\$${product.sellingPrice.toStringAsFixed(2)}',
-          style: theme.textTheme.titleMedium?.copyWith(
+          AppNumberFormatter.formatAmount(product.sellingPrice),
+          style: theme.textTheme.bodyLarge?.copyWith(
             fontWeight: FontWeight.w700,
             color: theme.colorScheme.primary,
           ),
@@ -104,7 +111,8 @@ class _StockBadge extends StatelessWidget {
     final text = switch (status) {
       _StockBadgeStatus.outOfStock => LocaleKeys.outOfStock.tr(),
       _StockBadgeStatus.lowStock => LocaleKeys.lowStock.tr(),
-      _StockBadgeStatus.inStock => '${LocaleKeys.stock.tr()}: ${product.stock}',
+      _StockBadgeStatus.inStock =>
+        '${LocaleKeys.stock.tr()}: ${AppNumberFormatter.formatInteger(product.stock)} ${product.trackedUnitName}',
     };
 
     final foreground = switch (status) {

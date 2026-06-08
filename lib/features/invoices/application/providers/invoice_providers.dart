@@ -6,6 +6,8 @@ import 'package:sodais_finance/features/persons/domain/persons_query_options.dar
 import 'package:sodais_finance/features/products/data/repositories/product_repository_impl.dart';
 import 'package:sodais_finance/features/products/domain/product.dart';
 import 'package:sodais_finance/features/products/domain/products_query_options.dart';
+import 'package:sodais_finance/features/transactions/application/providers/transaction_providers.dart';
+import 'package:sodais_finance/features/transactions/domain/transactions_repository.dart';
 import '../../data/local/dao/invoice_dao.dart';
 import '../../../app/data/app_database.dart';
 
@@ -30,6 +32,23 @@ final invoiceItemsProvider = FutureProvider.family((ref, int invoiceId) async {
   final dao = ref.watch(invoiceDaoProvider);
   return dao.getItemsForInvoice(invoiceId);
 });
+
+final invoiceDetailsProvider = FutureProvider.family<InvoiceDetails?, int>((
+  ref,
+  invoiceId,
+) async {
+  final dao = ref.watch(invoiceDaoProvider);
+  return dao.getInvoiceDetails(invoiceId);
+});
+
+final invoicePaymentRecordsProvider =
+    FutureProvider.family<List<InvoiceLedgerPaymentRecord>, int>((
+      ref,
+      invoiceId,
+    ) async {
+      final repository = ref.watch(transactionsRepositoryProvider);
+      return repository.getInvoicePayments(invoiceId);
+    });
 
 final invoiceContactsProvider =
     StreamProvider.family<List<Person>, InvoiceType>((ref, type) {

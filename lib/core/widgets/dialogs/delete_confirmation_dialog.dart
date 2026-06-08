@@ -57,7 +57,7 @@ class DeleteConfirmationDialog extends StatelessWidget {
                     width: 40,
                     height: 40,
                     decoration: BoxDecoration(
-                      color: colorScheme.error.withOpacity(0.1),
+                      color: colorScheme.error.withValues(alpha: 0.1),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -84,7 +84,9 @@ class DeleteConfirmationDialog extends StatelessWidget {
                 message,
                 style: theme.textTheme.bodyMedium?.copyWith(
                   height: 1.5,
-                  color: theme.textTheme.bodyMedium?.color?.withOpacity(0.7),
+                  color: theme.textTheme.bodyMedium?.color?.withValues(
+                    alpha: 0.7,
+                  ),
                 ),
               ),
               const SizedBox(height: 32),
@@ -104,7 +106,7 @@ class DeleteConfirmationDialog extends StatelessWidget {
                       minimumSize: Size.zero,
                       tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                       foregroundColor: theme.textTheme.bodyMedium?.color
-                          ?.withOpacity(0.7),
+                          ?.withValues(alpha: 0.7),
                     ),
                     onPressed: () => Navigator.of(context).pop(false),
                     child: Text(

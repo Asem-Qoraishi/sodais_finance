@@ -1135,6 +1135,57 @@ class $ProductTableTable extends ProductTable
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _mainUnitNameMeta = const VerificationMeta(
+    'mainUnitName',
+  );
+  @override
+  late final GeneratedColumn<String> mainUnitName = GeneratedColumn<String>(
+    'main_unit_name',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 64),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('item'),
+  );
+  static const VerificationMeta _secondaryUnitNameMeta = const VerificationMeta(
+    'secondaryUnitName',
+  );
+  @override
+  late final GeneratedColumn<String> secondaryUnitName =
+      GeneratedColumn<String>(
+        'secondary_unit_name',
+        aliasedName,
+        true,
+        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 64),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _secondaryUnitRateMeta = const VerificationMeta(
+    'secondaryUnitRate',
+  );
+  @override
+  late final GeneratedColumn<double> secondaryUnitRate =
+      GeneratedColumn<double>(
+        'secondary_unit_rate',
+        aliasedName,
+        true,
+        type: DriftSqlType.double,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _stockUnitMeta = const VerificationMeta(
+    'stockUnit',
+  );
+  @override
+  late final GeneratedColumn<String> stockUnit = GeneratedColumn<String>(
+    'stock_unit',
+    aliasedName,
+    false,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 16),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('main'),
+  );
   static const VerificationMeta _locationMeta = const VerificationMeta(
     'location',
   );
@@ -1183,6 +1234,10 @@ class $ProductTableTable extends ProductTable
     taxRate,
     stock,
     reorderLevel,
+    mainUnitName,
+    secondaryUnitName,
+    secondaryUnitRate,
+    stockUnit,
     location,
     createdAt,
     updatedAt,
@@ -1276,6 +1331,39 @@ class $ProductTableTable extends ProductTable
         ),
       );
     }
+    if (data.containsKey('main_unit_name')) {
+      context.handle(
+        _mainUnitNameMeta,
+        mainUnitName.isAcceptableOrUnknown(
+          data['main_unit_name']!,
+          _mainUnitNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('secondary_unit_name')) {
+      context.handle(
+        _secondaryUnitNameMeta,
+        secondaryUnitName.isAcceptableOrUnknown(
+          data['secondary_unit_name']!,
+          _secondaryUnitNameMeta,
+        ),
+      );
+    }
+    if (data.containsKey('secondary_unit_rate')) {
+      context.handle(
+        _secondaryUnitRateMeta,
+        secondaryUnitRate.isAcceptableOrUnknown(
+          data['secondary_unit_rate']!,
+          _secondaryUnitRateMeta,
+        ),
+      );
+    }
+    if (data.containsKey('stock_unit')) {
+      context.handle(
+        _stockUnitMeta,
+        stockUnit.isAcceptableOrUnknown(data['stock_unit']!, _stockUnitMeta),
+      );
+    }
     if (data.containsKey('location')) {
       context.handle(
         _locationMeta,
@@ -1349,6 +1437,22 @@ class $ProductTableTable extends ProductTable
         DriftSqlType.int,
         data['${effectivePrefix}reorder_level'],
       )!,
+      mainUnitName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}main_unit_name'],
+      )!,
+      secondaryUnitName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}secondary_unit_name'],
+      ),
+      secondaryUnitRate: attachedDatabase.typeMapping.read(
+        DriftSqlType.double,
+        data['${effectivePrefix}secondary_unit_rate'],
+      ),
+      stockUnit: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}stock_unit'],
+      )!,
       location: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}location'],
@@ -1383,6 +1487,10 @@ class ProductTableData extends DataClass
   final double taxRate;
   final int stock;
   final int reorderLevel;
+  final String mainUnitName;
+  final String? secondaryUnitName;
+  final double? secondaryUnitRate;
+  final String stockUnit;
   final String? location;
   final DateTime createdAt;
   final DateTime updatedAt;
@@ -1398,6 +1506,10 @@ class ProductTableData extends DataClass
     required this.taxRate,
     required this.stock,
     required this.reorderLevel,
+    required this.mainUnitName,
+    this.secondaryUnitName,
+    this.secondaryUnitRate,
+    required this.stockUnit,
     this.location,
     required this.createdAt,
     required this.updatedAt,
@@ -1424,6 +1536,14 @@ class ProductTableData extends DataClass
     map['tax_rate'] = Variable<double>(taxRate);
     map['stock'] = Variable<int>(stock);
     map['reorder_level'] = Variable<int>(reorderLevel);
+    map['main_unit_name'] = Variable<String>(mainUnitName);
+    if (!nullToAbsent || secondaryUnitName != null) {
+      map['secondary_unit_name'] = Variable<String>(secondaryUnitName);
+    }
+    if (!nullToAbsent || secondaryUnitRate != null) {
+      map['secondary_unit_rate'] = Variable<double>(secondaryUnitRate);
+    }
+    map['stock_unit'] = Variable<String>(stockUnit);
     if (!nullToAbsent || location != null) {
       map['location'] = Variable<String>(location);
     }
@@ -1451,6 +1571,14 @@ class ProductTableData extends DataClass
       taxRate: Value(taxRate),
       stock: Value(stock),
       reorderLevel: Value(reorderLevel),
+      mainUnitName: Value(mainUnitName),
+      secondaryUnitName: secondaryUnitName == null && nullToAbsent
+          ? const Value.absent()
+          : Value(secondaryUnitName),
+      secondaryUnitRate: secondaryUnitRate == null && nullToAbsent
+          ? const Value.absent()
+          : Value(secondaryUnitRate),
+      stockUnit: Value(stockUnit),
       location: location == null && nullToAbsent
           ? const Value.absent()
           : Value(location),
@@ -1476,6 +1604,14 @@ class ProductTableData extends DataClass
       taxRate: serializer.fromJson<double>(json['taxRate']),
       stock: serializer.fromJson<int>(json['stock']),
       reorderLevel: serializer.fromJson<int>(json['reorderLevel']),
+      mainUnitName: serializer.fromJson<String>(json['mainUnitName']),
+      secondaryUnitName: serializer.fromJson<String?>(
+        json['secondaryUnitName'],
+      ),
+      secondaryUnitRate: serializer.fromJson<double?>(
+        json['secondaryUnitRate'],
+      ),
+      stockUnit: serializer.fromJson<String>(json['stockUnit']),
       location: serializer.fromJson<String?>(json['location']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
@@ -1496,6 +1632,10 @@ class ProductTableData extends DataClass
       'taxRate': serializer.toJson<double>(taxRate),
       'stock': serializer.toJson<int>(stock),
       'reorderLevel': serializer.toJson<int>(reorderLevel),
+      'mainUnitName': serializer.toJson<String>(mainUnitName),
+      'secondaryUnitName': serializer.toJson<String?>(secondaryUnitName),
+      'secondaryUnitRate': serializer.toJson<double?>(secondaryUnitRate),
+      'stockUnit': serializer.toJson<String>(stockUnit),
       'location': serializer.toJson<String?>(location),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
@@ -1514,6 +1654,10 @@ class ProductTableData extends DataClass
     double? taxRate,
     int? stock,
     int? reorderLevel,
+    String? mainUnitName,
+    Value<String?> secondaryUnitName = const Value.absent(),
+    Value<double?> secondaryUnitRate = const Value.absent(),
+    String? stockUnit,
     Value<String?> location = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
@@ -1529,6 +1673,14 @@ class ProductTableData extends DataClass
     taxRate: taxRate ?? this.taxRate,
     stock: stock ?? this.stock,
     reorderLevel: reorderLevel ?? this.reorderLevel,
+    mainUnitName: mainUnitName ?? this.mainUnitName,
+    secondaryUnitName: secondaryUnitName.present
+        ? secondaryUnitName.value
+        : this.secondaryUnitName,
+    secondaryUnitRate: secondaryUnitRate.present
+        ? secondaryUnitRate.value
+        : this.secondaryUnitRate,
+    stockUnit: stockUnit ?? this.stockUnit,
     location: location.present ? location.value : this.location,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
@@ -1556,6 +1708,16 @@ class ProductTableData extends DataClass
       reorderLevel: data.reorderLevel.present
           ? data.reorderLevel.value
           : this.reorderLevel,
+      mainUnitName: data.mainUnitName.present
+          ? data.mainUnitName.value
+          : this.mainUnitName,
+      secondaryUnitName: data.secondaryUnitName.present
+          ? data.secondaryUnitName.value
+          : this.secondaryUnitName,
+      secondaryUnitRate: data.secondaryUnitRate.present
+          ? data.secondaryUnitRate.value
+          : this.secondaryUnitRate,
+      stockUnit: data.stockUnit.present ? data.stockUnit.value : this.stockUnit,
       location: data.location.present ? data.location.value : this.location,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
@@ -1576,6 +1738,10 @@ class ProductTableData extends DataClass
           ..write('taxRate: $taxRate, ')
           ..write('stock: $stock, ')
           ..write('reorderLevel: $reorderLevel, ')
+          ..write('mainUnitName: $mainUnitName, ')
+          ..write('secondaryUnitName: $secondaryUnitName, ')
+          ..write('secondaryUnitRate: $secondaryUnitRate, ')
+          ..write('stockUnit: $stockUnit, ')
           ..write('location: $location, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -1596,6 +1762,10 @@ class ProductTableData extends DataClass
     taxRate,
     stock,
     reorderLevel,
+    mainUnitName,
+    secondaryUnitName,
+    secondaryUnitRate,
+    stockUnit,
     location,
     createdAt,
     updatedAt,
@@ -1615,6 +1785,10 @@ class ProductTableData extends DataClass
           other.taxRate == this.taxRate &&
           other.stock == this.stock &&
           other.reorderLevel == this.reorderLevel &&
+          other.mainUnitName == this.mainUnitName &&
+          other.secondaryUnitName == this.secondaryUnitName &&
+          other.secondaryUnitRate == this.secondaryUnitRate &&
+          other.stockUnit == this.stockUnit &&
           other.location == this.location &&
           other.createdAt == this.createdAt &&
           other.updatedAt == this.updatedAt);
@@ -1632,6 +1806,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
   final Value<double> taxRate;
   final Value<int> stock;
   final Value<int> reorderLevel;
+  final Value<String> mainUnitName;
+  final Value<String?> secondaryUnitName;
+  final Value<double?> secondaryUnitRate;
+  final Value<String> stockUnit;
   final Value<String?> location;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
@@ -1647,6 +1825,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     this.taxRate = const Value.absent(),
     this.stock = const Value.absent(),
     this.reorderLevel = const Value.absent(),
+    this.mainUnitName = const Value.absent(),
+    this.secondaryUnitName = const Value.absent(),
+    this.secondaryUnitRate = const Value.absent(),
+    this.stockUnit = const Value.absent(),
     this.location = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -1663,6 +1845,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     this.taxRate = const Value.absent(),
     this.stock = const Value.absent(),
     this.reorderLevel = const Value.absent(),
+    this.mainUnitName = const Value.absent(),
+    this.secondaryUnitName = const Value.absent(),
+    this.secondaryUnitRate = const Value.absent(),
+    this.stockUnit = const Value.absent(),
     this.location = const Value.absent(),
     this.createdAt = const Value.absent(),
     required DateTime updatedAt,
@@ -1680,6 +1866,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     Expression<double>? taxRate,
     Expression<int>? stock,
     Expression<int>? reorderLevel,
+    Expression<String>? mainUnitName,
+    Expression<String>? secondaryUnitName,
+    Expression<double>? secondaryUnitRate,
+    Expression<String>? stockUnit,
     Expression<String>? location,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
@@ -1696,6 +1886,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
       if (taxRate != null) 'tax_rate': taxRate,
       if (stock != null) 'stock': stock,
       if (reorderLevel != null) 'reorder_level': reorderLevel,
+      if (mainUnitName != null) 'main_unit_name': mainUnitName,
+      if (secondaryUnitName != null) 'secondary_unit_name': secondaryUnitName,
+      if (secondaryUnitRate != null) 'secondary_unit_rate': secondaryUnitRate,
+      if (stockUnit != null) 'stock_unit': stockUnit,
       if (location != null) 'location': location,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -1714,6 +1908,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     Value<double>? taxRate,
     Value<int>? stock,
     Value<int>? reorderLevel,
+    Value<String>? mainUnitName,
+    Value<String?>? secondaryUnitName,
+    Value<double?>? secondaryUnitRate,
+    Value<String>? stockUnit,
     Value<String?>? location,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
@@ -1730,6 +1928,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
       taxRate: taxRate ?? this.taxRate,
       stock: stock ?? this.stock,
       reorderLevel: reorderLevel ?? this.reorderLevel,
+      mainUnitName: mainUnitName ?? this.mainUnitName,
+      secondaryUnitName: secondaryUnitName ?? this.secondaryUnitName,
+      secondaryUnitRate: secondaryUnitRate ?? this.secondaryUnitRate,
+      stockUnit: stockUnit ?? this.stockUnit,
       location: location ?? this.location,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -1772,6 +1974,18 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
     if (reorderLevel.present) {
       map['reorder_level'] = Variable<int>(reorderLevel.value);
     }
+    if (mainUnitName.present) {
+      map['main_unit_name'] = Variable<String>(mainUnitName.value);
+    }
+    if (secondaryUnitName.present) {
+      map['secondary_unit_name'] = Variable<String>(secondaryUnitName.value);
+    }
+    if (secondaryUnitRate.present) {
+      map['secondary_unit_rate'] = Variable<double>(secondaryUnitRate.value);
+    }
+    if (stockUnit.present) {
+      map['stock_unit'] = Variable<String>(stockUnit.value);
+    }
     if (location.present) {
       map['location'] = Variable<String>(location.value);
     }
@@ -1798,6 +2012,10 @@ class ProductTableCompanion extends UpdateCompanion<ProductTableData> {
           ..write('taxRate: $taxRate, ')
           ..write('stock: $stock, ')
           ..write('reorderLevel: $reorderLevel, ')
+          ..write('mainUnitName: $mainUnitName, ')
+          ..write('secondaryUnitName: $secondaryUnitName, ')
+          ..write('secondaryUnitRate: $secondaryUnitRate, ')
+          ..write('stockUnit: $stockUnit, ')
           ..write('location: $location, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt')
@@ -5879,6 +6097,10 @@ typedef $$ProductTableTableCreateCompanionBuilder =
       Value<double> taxRate,
       Value<int> stock,
       Value<int> reorderLevel,
+      Value<String> mainUnitName,
+      Value<String?> secondaryUnitName,
+      Value<double?> secondaryUnitRate,
+      Value<String> stockUnit,
       Value<String?> location,
       Value<DateTime> createdAt,
       required DateTime updatedAt,
@@ -5896,6 +6118,10 @@ typedef $$ProductTableTableUpdateCompanionBuilder =
       Value<double> taxRate,
       Value<int> stock,
       Value<int> reorderLevel,
+      Value<String> mainUnitName,
+      Value<String?> secondaryUnitName,
+      Value<double?> secondaryUnitRate,
+      Value<String> stockUnit,
       Value<String?> location,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
@@ -5985,6 +6211,26 @@ class $$ProductTableTableFilterComposer
 
   ColumnFilters<int> get reorderLevel => $composableBuilder(
     column: $table.reorderLevel,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mainUnitName => $composableBuilder(
+    column: $table.mainUnitName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get secondaryUnitName => $composableBuilder(
+    column: $table.secondaryUnitName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<double> get secondaryUnitRate => $composableBuilder(
+    column: $table.secondaryUnitRate,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get stockUnit => $composableBuilder(
+    column: $table.stockUnit,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6086,6 +6332,26 @@ class $$ProductTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get mainUnitName => $composableBuilder(
+    column: $table.mainUnitName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get secondaryUnitName => $composableBuilder(
+    column: $table.secondaryUnitName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<double> get secondaryUnitRate => $composableBuilder(
+    column: $table.secondaryUnitRate,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get stockUnit => $composableBuilder(
+    column: $table.stockUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get location => $composableBuilder(
     column: $table.location,
     builder: (column) => ColumnOrderings(column),
@@ -6173,6 +6439,24 @@ class $$ProductTableTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get mainUnitName => $composableBuilder(
+    column: $table.mainUnitName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get secondaryUnitName => $composableBuilder(
+    column: $table.secondaryUnitName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<double> get secondaryUnitRate => $composableBuilder(
+    column: $table.secondaryUnitRate,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get stockUnit =>
+      $composableBuilder(column: $table.stockUnit, builder: (column) => column);
+
   GeneratedColumn<String> get location =>
       $composableBuilder(column: $table.location, builder: (column) => column);
 
@@ -6246,6 +6530,10 @@ class $$ProductTableTableTableManager
                 Value<double> taxRate = const Value.absent(),
                 Value<int> stock = const Value.absent(),
                 Value<int> reorderLevel = const Value.absent(),
+                Value<String> mainUnitName = const Value.absent(),
+                Value<String?> secondaryUnitName = const Value.absent(),
+                Value<double?> secondaryUnitRate = const Value.absent(),
+                Value<String> stockUnit = const Value.absent(),
                 Value<String?> location = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
@@ -6261,6 +6549,10 @@ class $$ProductTableTableTableManager
                 taxRate: taxRate,
                 stock: stock,
                 reorderLevel: reorderLevel,
+                mainUnitName: mainUnitName,
+                secondaryUnitName: secondaryUnitName,
+                secondaryUnitRate: secondaryUnitRate,
+                stockUnit: stockUnit,
                 location: location,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -6278,6 +6570,10 @@ class $$ProductTableTableTableManager
                 Value<double> taxRate = const Value.absent(),
                 Value<int> stock = const Value.absent(),
                 Value<int> reorderLevel = const Value.absent(),
+                Value<String> mainUnitName = const Value.absent(),
+                Value<String?> secondaryUnitName = const Value.absent(),
+                Value<double?> secondaryUnitRate = const Value.absent(),
+                Value<String> stockUnit = const Value.absent(),
                 Value<String?> location = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 required DateTime updatedAt,
@@ -6293,6 +6589,10 @@ class $$ProductTableTableTableManager
                 taxRate: taxRate,
                 stock: stock,
                 reorderLevel: reorderLevel,
+                mainUnitName: mainUnitName,
+                secondaryUnitName: secondaryUnitName,
+                secondaryUnitRate: secondaryUnitRate,
+                stockUnit: stockUnit,
                 location: location,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
